@@ -1,0 +1,49 @@
+# Description
+
+dj takes the cacaphony of java, git, clojure, and build tools and
+mixes it into something a bit more harmonious
+
+# Features
+
+-manage system dependencies, native dependencies, live sources, and jars
+
+# File Directory Structure
+
+-The design of the directory hierarchy is based of the design of unix's
+ specifically, gentoo's
+
+bin/
+ -dj binaries and scripts to manage system
+src/
+ -source code for dj
+lib/
+ -used by leiningen
+
+-the remaining directories are ignored by git (listed in .gitignore)
+
+usr/
+ -local (non-system) content
+usr/src
+ -repository for live projects
+usr/bin
+ -native dep binaries
+etc/
+ -system configuration files
+sbin/
+ -this directory is required only if the local system does not provide
+  the dependencies
+ -contains system dependency binaries, binaries necessary to run clojure
+  and dj this is designed to be minimal
+ -pretty much its only java and git
+opt/
+ -location of system and native dependencies that need to persist
+ -basically the install directory for java
+tmp/
+ -contains transient files
+tmp/dj
+ -workspace for building system and native dependencies
+
+# Author
+
+Brent Millare
+brent.millare@gmail.com
