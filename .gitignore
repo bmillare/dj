@@ -3,3 +3,5 @@ opt/
 sbin/
 tmp/
 usr/
+lib/
+classes/

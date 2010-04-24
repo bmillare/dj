@@ -1,4 +1,4 @@
-(ns dj
+(ns dj.core
   (:import [java.io File FileOutputStream BufferedInputStream BufferedReader InputStreamReader])
   (:import [java.net URL])
   (:require [clojure.contrib [duck-streams :as duck-streams]]))
@@ -10,7 +10,8 @@
 
 (defn- extract-url-filename [url]
   (let [filename (.getFile url)]
-    (if (blank? filename)
+    (if (or (blank? filename)
+	    (= filename "/"))
       "index.html"
       (subs filename 1))))
 

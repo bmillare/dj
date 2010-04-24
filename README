@@ -1,7 +1,11 @@
 # Description
 
 dj takes the cacaphony of java, git, clojure, and build tools and
-mixes it into something a bit more harmonious
+mixes it into something harmonious. The goal is to maintain a
+consistent layout of directories with certain expectations with
+regards to their contents. At the moment, its more of a specification
+then code. In the future, dj should provide additional glue tools that
+coordinate tasks from a basic set of tools.
 
 # Features
 
@@ -9,15 +13,21 @@ mixes it into something a bit more harmonious
 
 # File Directory Structure
 
--The design of the directory hierarchy is based of the design of unix's
+-The design of the directory hierarchy is based of the design of linux's
  specifically, gentoo's
+-every time you create a directory with these subdirectories, you
+ create a new system, thus you can have many clojure systems on one
+ computer
+
+-the only way to run concurrently different systems is (under unix)
+ to create new bash environments each time
 
 bin/
  -dj binaries and scripts to manage system
 src/
  -source code for dj
-lib/
- -used by leiningen
+lib/ classes/
+ -used by leiningen, for dj only
 
 -the remaining directories are ignored by git (listed in .gitignore)
 
@@ -27,14 +37,16 @@ usr/src
  -repository for live projects
 usr/bin
  -native dep binaries
+usr/tmp
+ -experimental repository
 etc/
  -system configuration files
 sbin/
  -this directory is required only if the local system does not provide
   the dependencies
  -contains system dependency binaries, binaries necessary to run clojure
-  and dj this is designed to be minimal
- -pretty much its only java and git
+  and dj, this is designed to be minimal
+ -pretty much its the jdk and git
 opt/
  -location of system and native dependencies that need to persist
  -basically the install directory for java
@@ -42,6 +54,75 @@ tmp/
  -contains transient files
 tmp/dj
  -workspace for building system and native dependencies
+
+# Script descriptions
+
+setup-directories.sh
+-create directories
+boostrap-system-deps.sh
+-download install java
+-download, build, install git
+-not normal way, not necessary if you can bootstrap system deps from
+ the host distribution/OS
+
+# dj concepts
+
+system
+-a checkout/snapshot of the dj project with its dependencies
+ fulfilled
+
+live dependency
+-a dependency on the current state (live) of some project's directory
+-should just be a path
+-to deal with directory name collisions, append directory with a slot,
+ which is just a counter, e.g. leiningen-1, leinigen-2
+-dj should be able to wrap generating folder names for you, dj will
+ just increment the largest value, names are arbitrary, and a name
+ without a counter is considered the 0 directory
+-the code you work on in a typical leiningen project is considered
+ live dependencies, which have the property that if you change the
+ files, reloading the file should change the definition
+
+checkout dependency
+-a dependency on project directory with a particular commit
+-dj should automatically download project and switch to version/commit
+
+# dj functionality
+
+-update, updates system dependencies
+-dj swank, launch a swank server
+-dj jar, make a jar of project
+-dj install, install in local repository
+-dj upload, install in remote repository
+
+# INSTALL instructions
+
+-download and extract dj snapshot for architecture/OS
+-run update
+
+# issues
+-working with maven, want .m2 directory to be in the system directory
+-current way to change local repository path is to make a settings.xml
+ file in ~/.m2 or <maven installation>/conf directory which contains:
+
+ <settings> ...
+ <local repository>/foo/bar</local repository>
+ ...
+ </settings>
+-from command line, you can change like so:
+ mvn compile -DlocalRepository=yourPath
+
+or from java code
+http://maven.apache.org/guides/mini/guide-embedding-m2.html
+the configuration variable has a setLocalRepository methods
+
+-lein uses maven ant task, which doesn't use the embedder api
+Configuration configuration = new DefaultCOnfiguration()
+       .setUserSettingsFile( MavenEmbedder.DEFAULT_USER_SETTINGS_FILE)
+       .setGlobalSettingsFile...
+
+-in order to bootstrap development, create bash based classpathloader that invokes swank
+-to implement basic functionality, need a launcher written mostly in clojure, and a deps determiner
 
 # Author
 
