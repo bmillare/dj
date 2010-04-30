@@ -124,6 +124,8 @@ Configuration configuration = new DefaultCOnfiguration()
 -in order to bootstrap development, create bash based classpathloader that invokes swank
 -to implement basic functionality, need a launcher written mostly in clojure, and a deps determiner
 
+When looking for the jar in a repository, if there is no group-id, default group-id to artifact-id
+
 # Author
 
 Brent Millare

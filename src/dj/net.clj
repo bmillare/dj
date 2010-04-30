@@ -1,7 +1,10 @@
-(ns dj.core
+(ns dj.net
   (:import [java.io File FileOutputStream BufferedInputStream BufferedReader InputStreamReader])
   (:import [java.net URL])
   (:require [clojure.contrib [duck-streams :as duck-streams]]))
+
+(def repository-urls ["http://repo1.maven.org/maven2"
+		      "http://clojars.org/repo/"])
 
 (defn blank?
   "True if s is nil, empty, or contains only whitespace."
@@ -47,3 +50,9 @@
       (duck-streams/spit filename (wget-text url))
       (with-open [out-file (FileOutputStream. filename)]
 	(.write out-file (wget-binary con content-length))))))
+
+(defn resolve-url []
+  "takes dependency form and returns URLs")
+
+(defn download-dependency []
+  "takes dependency and downloads file")
