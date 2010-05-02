@@ -1,5 +1,4 @@
 (ns dj.core
-  (:use [dj.net :only [wget]]))
+  (:import [java.io File]))
 
-(defn hello-world []
-  (print "omg"))
+(def system-root (File. (System/getProperty "user.dir")))
