@@ -4,10 +4,16 @@
   (:use [dj.net :only [wget!]])
   (:use [dj.core :only [system-root]]))
 
+(defn- file
+  ([path]
+     (.getCanonicalFile (File. path)))
+  ([parent child]
+     (.getCanonicalFile (File. parent child))))
+
 (def repository-urls ["http://repo1.maven.org/maven2"
 		      "http://clojars.org/repo/"])
 
-(def local-repository-path (File. system-root "./usr/maven/"))
+(def local-repository-path (file system-root "./usr/maven/"))
 
 (defn delete-recursive [#^File f]
   "inclusive delete recursively"
@@ -31,18 +37,22 @@
 	 version "/"
 	 artifact-id "-" version)))
 
-(defn get-dependency-path [dependency file-extension repository-path]
-  "takes dependency and file-extension returns File path to local copy in repository"
-  (File. repository-path
-	 (str (get-dependency-path-prefix dependency)
-	      file-extension)))
+(defn get-dependency-path
+  "takes dependency and file-extension returns File path to local copy
+   in repository"
+  ([dependency file-extension repository-path]
+     (file repository-path
+	   (str (get-dependency-path-prefix dependency)
+		file-extension)))
+  ([dependency file-extension]
+     (get-dependency-path dependency file-extension local-repository-path)))
 
 (defn get-dependency-URL [dependency file-extension repository-url]
   "takes dependency, file-extension, and repository, and returns String URL to the file"
   (str (if (= \/ (last repository-url))
 	 repository-url
 	 (str repository-url "/"))
-       (get-dependency-path-prefix dependency)
+       (.getCanonicalPath (get-dependency-path-prefix dependency))
        file-extension))
 
 (defn make-tmp-folder! [#^File directory]
@@ -53,7 +63,7 @@
 	    largest-count (if file-list
 			    (apply max (for [f file-list] (Integer/parseInt (.getName f))))
 			    0)
-	    tmp-folder-path (File. directory (str (inc largest-count)))]
+	    tmp-folder-path (file directory (str (inc largest-count)))]
 	(if (.mkdir tmp-folder-path)
 	  tmp-folder-path
 	  (if (.exists tmp-folder-path)
@@ -72,8 +82,8 @@
 
 (defn download-dependency! [dependency]
   "downloads files for a single dependency if not in local repository, returns install folder path"
-  (let [install-jar (get-dependency-path dependency ".jar" local-repository-path)
-	install-pom (get-dependency-path dependency ".pom" local-repository-path)
+  (let [install-jar (get-dependency-path dependency ".jar")
+	install-pom (get-dependency-path dependency ".pom")
 	install-folder (.getParentFile install-jar)]
    (letfn [(wget-from!
 	    [repositories]
@@ -81,7 +91,7 @@
             downloads files to temporary directory before moving, does clean up after"
 	    (let [url-jar (get-dependency-URL dependency ".jar" (first repositories))
 		  url-pom (get-dependency-URL dependency ".pom" (first repositories))
-		  tmp-folder (make-tmp-folder! (make-directory! (File. system-root "tmp/repository")))]
+		  tmp-folder (make-tmp-folder! (make-directory! (file system-root "tmp/repository")))]
 	      (try
 	       (let [downloaded-pom (wget! url-pom tmp-folder)
 		     downloaded-jar (wget! url-jar tmp-folder)]

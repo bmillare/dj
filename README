@@ -7,6 +7,28 @@ regards to their contents. At the moment, its more of a specification
 then code. In the future, dj should provide additional glue tools that
 coordinate tasks from a basic set of tools.
 
+The tools are designed to provide managing dependencies for projects
+at the system level. Tools should allow Dependencies to be searched,
+determined, downloaded to the repository, and removed from the
+repository.
+
+dj inherits certain principles from clojure and utilizes it in its
+design. Repositories are dynamic changing and differing structures,
+but the dependencies are considered immutable. Dependencies with the
+same version must be the same in any repository. Repositories are best
+thought of as caches and there is a local repository in the
+system. Dependencies are resolved lazily in that poms, the files that
+contain the dependency information, are obtained lazily, ie. there is
+no need to maintain a complete tree of pom files. The catch is you
+need an internet connection to ensure pom files are downloaded as
+necessary. It is conceivable to sync with repositories that have many
+projects to permit offline usage.
+
+Using Maven repositories for rapidly developing projects is difficult,
+dj tries to rectify this by creating repositories for live projects
+that are managed by versioning software such as git, svn, and dj
+itself.
+
 # Features
 
 -manage system dependencies, native dependencies, live sources, and jars
@@ -99,32 +121,6 @@ checkout dependency
 
 -download and extract dj snapshot for architecture/OS
 -run update
-
-# issues
--working with maven, want .m2 directory to be in the system directory
--current way to change local repository path is to make a settings.xml
- file in ~/.m2 or <maven installation>/conf directory which contains:
-
- <settings> ...
- <local repository>/foo/bar</local repository>
- ...
- </settings>
--from command line, you can change like so:
- mvn compile -DlocalRepository=yourPath
-
-or from java code
-http://maven.apache.org/guides/mini/guide-embedding-m2.html
-the configuration variable has a setLocalRepository methods
-
--lein uses maven ant task, which doesn't use the embedder api
-Configuration configuration = new DefaultCOnfiguration()
-       .setUserSettingsFile( MavenEmbedder.DEFAULT_USER_SETTINGS_FILE)
-       .setGlobalSettingsFile...
-
--in order to bootstrap development, create bash based classpathloader that invokes swank
--to implement basic functionality, need a launcher written mostly in clojure, and a deps determiner
-
-When looking for the jar in a repository, if there is no group-id, default group-id to artifact-id
 
 # Author
 
