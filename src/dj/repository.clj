@@ -80,34 +80,42 @@
 				" please clean up")))))
   directory)
 
-(defn download-dependency! [dependency]
-  "downloads files for a single dependency if not in local repository, returns install folder path"
-  (let [install-jar (get-dependency-path dependency ".jar")
-	install-pom (get-dependency-path dependency ".pom")
-	install-folder (.getParentFile install-jar)]
-   (letfn [(wget-from!
-	    [repositories]
-	    "attempt to get dependency from repositories in order,
-            downloads files to temporary directory before moving, does clean up after"
-	    (let [url-jar (get-dependency-URL dependency ".jar" (first repositories))
-		  url-pom (get-dependency-URL dependency ".pom" (first repositories))
-		  tmp-folder (make-tmp-folder! (make-directory! (file system-root "tmp/repository")))]
-	      (try
-	       (let [downloaded-pom (wget! url-pom tmp-folder)
-		     downloaded-jar (wget! url-jar tmp-folder)]
-		 (make-directory! install-folder)
-		 (.renameTo downloaded-jar install-jar)
-		 (.renameTo downloaded-pom install-pom)
-		 install-folder)
-	       (catch FileNotFoundException e
-		 (if (next repositories)
-		   (wget-from! (next repositories))
-		   (throw (FileNotFoundException. (.getFile (URL. url-jar))))))
-	       (finally (delete-recursive tmp-folder)))))]
-     (if (and (.exists install-jar)
-	      (.exists install-pom))
-       install-folder
-       (wget-from! repository-urls)))))
+(defn download-dependency!
+  "downloads files for a single dependency if not in local repository,
+  returns install folder path
+
+  options
+  pom-only? does not download jar files, useful for determining
+  dependencies before installing"
+  ([dependency pom-only?]
+     (let [install-jar (get-dependency-path dependency ".jar")
+	   install-pom (get-dependency-path dependency ".pom")
+	   install-folder (.getParentFile install-pom)]
+       (letfn [(wget-from!
+		[repositories]
+		"attempt to get dependency from repositories in order,
+                 downloads files to temporary directory before moving, does clean up after"
+		(let [url-jar (get-dependency-URL dependency ".jar" (first repositories))
+		      url-pom (get-dependency-URL dependency ".pom" (first repositories))
+		      tmp-folder (make-tmp-folder! (make-directory! (file system-root "tmp/repository")))]
+		  (try
+		   (let [downloaded-pom (wget! url-pom tmp-folder)
+			 downloaded-jar (when-not pom-only? (wget! url-jar tmp-folder))]
+		     (make-directory! install-folder)
+		     (when-not pom-only? (.renameTo downloaded-jar install-jar))
+		     (.renameTo downloaded-pom install-pom)
+		     install-folder)
+		   (catch FileNotFoundException e
+		     (if (next repositories)
+		       (wget-from! (next repositories))
+		       (throw (FileNotFoundException. (.getFile (URL. url-pom))))))
+		   (finally (delete-recursive tmp-folder)))))]
+	 (if (and (.exists install-pom)
+		  (or pom-only? (.exists install-jar)))
+	   install-folder
+	   (wget-from! repository-urls)))))
+  ([dependency]
+     (download-dependency! dependency false)))
 
 (defn testo []
   ;;(wget! "http://build.clojure.org/releases/org/clojure/clojure/1.1.0/clojure-1.1.0.pom" (File. "/home/hara/.downloads/"))

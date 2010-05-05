@@ -1,6 +1,10 @@
 (ns dj.deps
   (:require [clojure.xml :as xml])
+  (:require [clojure.set :as set])
   (:require [dj.repository :as repo]))
+
+(def options {:pretend nil
+	      :verbose true})
 
 (defn- condense-recursive [{:keys [tag content] :as xml-map-entry}]
   "given output from clojure.xml/parse, returns same tree but
@@ -13,104 +17,75 @@
       {tag (condense-recursive content)}
       {tag content})))
 
-(defn- find-entry [k m]
-  (k (first (filter k m))))
-
-(defn- extract-dependency% [{parse-entry :dependency }]
-  "given dependency section of condensed parse of pom xml data,
-   returns dependency form"
-  (when parse-entry
-    [(symbol (first (find-entry :groupId parse-entry))
-	     (first (find-entry :artifactId parse-entry)))
-     (first (find-entry :version parse-entry))]))
+(defn- find-entry [k p]
+  "lazy linear search"
+  (k (first (filter k p))))
 
 (defn- extract-dependency [parse-entry]
   "given dependency parse returns dependency form"
-  (when parse-entry
-    [(symbol (first (find-entry :groupId parse-entry))
-	     (first (find-entry :artifactId parse-entry)))
-     (first (find-entry :version parse-entry))]))
+  [(symbol (first (:groupId parse-entry))
+	   (first (:artifactId parse-entry)))
+   (first (:version parse-entry))])
 
-(defn- extract-exclusions [dependencies-parse]
-  (->> dependencies-parse
-       :dependency
-       (find-entry :exclusions)
-       ;;
-       (map extract-dependency)))
+(defn- extract-exclusions [parse-entry]
+  "given dependency parse returns exclusions"
+  (set (for [{exclusion :exclusion} (:exclusions parse-entry)]
+	 (extract-dependency (apply merge exclusion)))))
 
-(defn- get-direct-dependencies-parse [dependency]
+(defn- get-direct-dependencies-parse! [dependency]
   "takes dependency form and returns the parsed form sequence of
    dependency forms that directly fulfill given dependency
 
-   Assumes pom file exists"
-  (->> (xml/parse (repo/get-dependency-path dependency ".pom"))
+   downloads dependencies to repository if needed"
+  (repo/download-dependency! dependency (:pretend options))
+  (->> (repo/get-dependency-path dependency ".pom")
+       xml/parse 
        condense-recursive
        :project
        (find-entry :dependencies)))
 
-(defn extract-direct-dependencies [dependecies-parse]
-  (map extract-dependency dependencies-parse))
-
-(defn get-direct-dependencies [dependency]
-  "takes dependency form and returns sequence of dependency forms that
-   directly fulfill given dependency
-   Assumes pom file exists"
-  (extract-direct-dependencies (get-direct-dependencies-parse dependency)))
-
-(defn get-all-dependencies
+(defn get-all-dependencies!
   "recursively deterimines and returns all dependencies for items in
   dependency-list. Preserves order, removes redundancies, raises
-  errors on cyclic dependencies. Optional exclusions argument should
-  be a collection of dependencies that are not to be included
+  errors on cyclic dependencies. Supports optional exclusions, a
+  collection of dependencies that are not to be resolved
 
   TODO:
-  -add support for same package name conflict
-  -add exclusions
+  -add support for excluding on just artifactid
 
-  algorithm is just modify two sets during a post order traversal of
-  the dependency tree"
+  algorithm is just modify two sets and list during a post order
+  traversal of the dependency tree"
   ([dependency-list exclusions]
      (let [seen (ref #{})
-	   resolved (ref #{})
+	   resolved (ref [])
+	   resolved-set (ref #{})
 	   exclusions (ref (set exclusions))]
-       (letfn [(resolve-dependency
-		"walk tree"
+       (letfn [(get-direct-dependencies!
 		[d]
-		(when-not (@resolved d)
+		"create list of direct dependencies and update exclusions"
+		(for [{dependency :dependency} (get-direct-dependencies-parse! d)]
+		  (let [dependency-map (apply merge dependency)]
+		    (dosync (alter exclusions set/union (extract-exclusions dependency-map)))
+		    (extract-dependency dependency-map))))
+	       (resolve-dependency
+		[d]
+		"walk tree"
+		(when-not (or (@resolved-set d)
+			       (@exclusions d))
 		  (if (@seen d)
 		    (throw (Exception. "Circular dependency detected"))
 		    (do
 		      (dosync (alter seen conj d))
-		      (let [dependencies-parse (get-direct-dependencies-parse d)
-			    ]
-			;;loop through dependencies
-			(doseq [{dependency-parse :dependency} dependencies-parse]
-			  (extract-dependency dependency-parse)
-			  (extract-exclusion (:depend)))
-			;;extract dep-form from dep
-			;;add ex from dep
-			)
-		      
-		      (doall (map resolve-dependency (get-direct-dependencies d)))
+		      (doall (map resolve-dependency (get-direct-dependencies! d)))
 		      (dosync
 		       (alter seen disj d)
-		       (alter resolved conj d))))))]
+		       (alter resolved conj d)
+		       (alter resolved-set conj d))))))]
 	 (doseq [dependency dependency-list]
 	   (resolve-dependency dependency))
 	 @resolved)))
   ([dependency-list]
-     (get-all-dependencies dependency-list nil)))
-
-(defn resolve-dependencies []
-  "given dependency form, returns list of dependency forms that the input depends on
-
-expect to implement this as a recursive analyzing of pom file")
+     (get-all-dependencies! dependency-list nil)))
 
 (defn testo []
-
-  ;(get-all-dependencies [['org.clojure/clojure "1.1.0"]])
-  ;(get-all-dependencies [['org.clojure/clojure-contrib "1.1.0"]])
-  (get-all-dependencies [['leiningen/leiningen "1.0.0-SNAPSHOT"]])
-  ;;(get-direct-dependencies ['org.clojure/clojure-contrib "1.1.0"])
-  )
-;; defn obtain all dependencies for artifact, includes exclusion
+  nil)
