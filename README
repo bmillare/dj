@@ -1,5 +1,8 @@
 # Description
 
+In a nutshell, dj is an attempt to make a clojure distribution. In the
+same way that debian (and APT) is to linux, dj is to clojure.
+
 dj takes the cacaphony of java, git, clojure, and build tools and
 mixes it into something harmonious. The goal is to maintain a
 consistent layout of directories with certain expectations with
@@ -8,7 +11,7 @@ then code. In the future, dj should provide additional glue tools that
 coordinate tasks from a basic set of tools.
 
 The tools are designed to provide managing dependencies for projects
-at the system level. Tools should allow Dependencies to be searched,
+at the system level. Tools should allow dependencies to be searched,
 determined, downloaded to the repository, and removed from the
 repository.
 

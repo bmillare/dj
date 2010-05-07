@@ -5,7 +5,7 @@
   (:use [dj.core :only [system-root]]))
 
 (defn- file
-  ([path]
+  ([#^File path]
      (.getCanonicalFile (File. path)))
   ([parent child]
      (.getCanonicalFile (File. parent child))))

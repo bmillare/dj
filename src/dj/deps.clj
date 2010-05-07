@@ -52,6 +52,7 @@
 
   TODO:
   -add support for excluding on just artifactid
+  -handle ${extrastuff} forms in xml file
 
   algorithm is just modify two sets and list during a post order
   traversal of the dependency tree"
