@@ -34,6 +34,8 @@ itself.
 
 # Features
 
+-need to be able create directory in the live repository, a project.clj file
+ and be able to start project from commandline
 -manage system dependencies, native dependencies, live sources, and jars
 
 # File Directory Structure
@@ -52,7 +54,7 @@ bin/
 src/
  -source code for dj
 lib/ classes/
- -used by leiningen, for dj only
+ -for dj only
 
 -the remaining directories are ignored by git (listed in .gitignore)
 
