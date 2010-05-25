@@ -1,51 +1,76 @@
-# Description
+# Motivation
+
+"dj takes the cacaphony of java, git, clojure, and build tools and
+mixes it into something harmonious."
 
 In a nutshell, dj is an attempt to make a clojure distribution. In the
-same way that debian (and APT) is to linux, dj is to clojure.
+same way that debian (and APT) is to linux, dj is to clojure. There
+are advantages to having a standard directory layout and providing
+tools that integrate the various applications and developer tools. dj
+is a combination of specifications and tools.
 
-dj takes the cacaphony of java, git, clojure, and build tools and
-mixes it into something harmonious. The goal is to maintain a
-consistent layout of directories with certain expectations with
-regards to their contents. At the moment, its more of a specification
-then code. In the future, dj should provide additional glue tools that
-coordinate tasks from a basic set of tools.
+# Informal Specifications
 
-The tools are designed to provide managing dependencies for projects
-at the system level. Tools should allow dependencies to be searched,
+There should be support for managing dependencies for projects at the
+system level. Tools should allow dependencies to be searched,
 determined, downloaded to the repository, and removed from the
-repository.
+repository. This is in contrast to leiningen which manages
+dependencies on an invididual project basis.
 
 dj inherits certain principles from clojure and utilizes it in its
-design. Repositories are dynamic changing and differing structures,
-but the dependencies are considered immutable. Dependencies with the
-same version must be the same in any repository. Repositories are best
-thought of as caches and there is a local repository in the
-system. Dependencies are resolved lazily in that poms, the files that
-contain the dependency information, are obtained lazily, ie. there is
-no need to maintain a complete tree of pom files. The catch is you
-need an internet connection to ensure pom files are downloaded as
-necessary. It is conceivable to sync with repositories that have many
-projects to permit offline usage.
+design. Repositories are dynamic, changing, and differing structures,
+but the dependencies are considered immutable. This implies that name
+a dependency named foo/bar-1.1.0-snapshot can never change. This is in
+contrast to the way leiningen currently handles snapshot
+versioning. Dependencies with the same version must be the same in any
+repository. Repositories are best thought of as caches and there is a
+local repository in the system. Dependencies are resolved lazily in
+that poms, the files that contain the dependency information, are
+obtained lazily, ie. there is no need to maintain a complete tree of
+pom files. The catch is you need an internet connection to ensure pom
+files are downloaded as necessary. It is conceivable to sync with
+repositories that have many projects to permit offline usage.
 
 Using Maven repositories for rapidly developing projects is difficult,
 dj tries to rectify this by creating repositories for live projects
 that are managed by versioning software such as git, svn, and dj
-itself.
+itself. There should be tools that support versioning by the commit
+hash or svn number while still preserving the live, unversioned
+code. Different projects should also be able to access different
+versions concurrently.
 
-# Features
+# Progress
 
 -need to be able create directory in the live repository, a project.clj file
  and be able to start project from commandline
--manage system dependencies, native dependencies, live sources, and jars
+
+# Limitations
+
+Currently, loading dependencies dynamically, by adding to the
+classpath during runtime, is possible by using clojure's
+DynamicClassLoader. The advantage to doing this is there is little
+code needed to do this. The problem is that classloader is loaded
+during the startup of clojure, which means you cannot reload a new
+version of clojure without restarting the jvm. Normally this is not a
+problem, however, because you would be restarting your application
+anyways and each application is tied to a single JVM
+instance. However, this also means that the handling of which clojure
+version loads is handled by the bash script instead of clojure
+code. There needs to be a way to easily load the correct clojure
+version automatically during startup regardless if this is done in
+clojure code or in shell scripting. Perhaps integrate a clojure server
+that starts new clojure applications where starting a new instance
+really just simply connects to that server and displays an
+interface. Startup time would decrease dramatically but would require
+a lot more work to setup.
 
 # File Directory Structure
 
 -The design of the directory hierarchy is based of the design of linux's
  specifically, gentoo's
--every time you create a directory with these subdirectories, you
- create a new system, thus you can have many clojure systems on one
- computer
-
+-combined with chroot, every time you create a directory with these
+ subdirectories, you create a new system, thus you can have many
+ clojure systems on one computer
 -the only way to run concurrently different systems is (under unix)
  to create new bash environments each time
 
@@ -54,7 +79,7 @@ bin/
 src/
  -source code for dj
 lib/ classes/
- -for dj only
+ -for dj only, subject to removal
 
 -the remaining directories are ignored by git (listed in .gitignore)
 
@@ -69,18 +94,22 @@ usr/tmp
 etc/
  -system configuration files
 sbin/
- -this directory is required only if the local system does not provide
-  the dependencies
+-this directory is required only if the local operating
+ system/distribution does not provide the dependencies
  -contains system dependency binaries, binaries necessary to run clojure
   and dj, this is designed to be minimal
- -pretty much its the jdk and git
+ -pretty much should contain the jdk and git
 opt/
  -location of system and native dependencies that need to persist
  -basically the install directory for java
+ -installation of applications that don't fit the dj model
 tmp/
  -contains transient files
 tmp/dj
  -workspace for building system and native dependencies
+tmp/repository
+ -workspace for downloading/resolving dependencies before moving into
+  the repository
 
 # Script descriptions
 
@@ -114,7 +143,7 @@ checkout dependency
 -a dependency on project directory with a particular commit
 -dj should automatically download project and switch to version/commit
 
-# dj functionality
+# dj ideas for cli
 
 -update, updates system dependencies
 -dj swank, launch a swank server
@@ -126,6 +155,15 @@ checkout dependency
 
 -download and extract dj snapshot for architecture/OS
 -run update
+
+# adding tasks
+
+To implement additional tasks, define a file with the same name as the
+task in a dj/cli/ directory in the classpath. The namespace doc-string
+is the task summary and you must have a main function that accepts
+arbitrary arguments. The main function's doc-string is the detailed
+documentation for the task. In practice this means adding tasks to the
+the src/dj/cli folder.
 
 # Author
 

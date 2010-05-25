@@ -4,7 +4,7 @@
   (:use [dj.net :only [wget!]])
   (:use [dj.core :only [system-root]]))
 
-(defn- file
+(defn file
   ([#^File path]
      (.getCanonicalFile (File. path)))
   ([parent child]
@@ -15,17 +15,19 @@
 
 (def local-repository-path (file system-root "./usr/maven/"))
 
-(defn delete-recursive [#^File f]
+(defn delete-recursive
   "inclusive delete recursively"
+  [#^File f]
   (if (.isDirectory f)
     (do (doseq [child (.listFiles f)]
 	  (delete-recursive child))
 	(.delete f))
     (.delete f)))
 
-(defn get-dependency-path-prefix [dependency]
+(defn get-dependency-path-prefix
   "takes dependency form [group-id/artifact-id \"version\"] and
   returns String path prefix"
+  [dependency]
   (let [artifact-id (name (dependency 0))
 	group-id (or (.replaceAll (namespace (dependency 0))
 				  "\\."
@@ -47,16 +49,18 @@
   ([dependency file-extension]
      (get-dependency-path dependency file-extension local-repository-path)))
 
-(defn get-dependency-URL [dependency file-extension repository-url]
+(defn get-dependency-URL
   "takes dependency, file-extension, and repository, and returns String URL to the file"
+  [dependency file-extension repository-url]
   (str (if (= \/ (last repository-url))
 	 repository-url
 	 (str repository-url "/"))
        (.getCanonicalPath (get-dependency-path-prefix dependency))
        file-extension))
 
-(defn make-tmp-folder! [#^File directory]
+(defn make-tmp-folder!
   "makes tmp folder with unique name in directory, returns path to folder"
+  [#^File directory]
   (if (.exists directory)
     (loop []
       (let [file-list (seq (.listFiles directory))
@@ -71,8 +75,9 @@
 	    (throw (IOException. (.getCanonicalPath tmp-folder-path)))))))
     (throw (FileNotFoundException. (.getCanonicalPath directory)))))
 
-(defn make-directory! [#^File directory]
+(defn make-directory!
   "makes directory or directories if it doesn't exist already, returns path to folder"
+  [#^File directory]
   (when-not (.exists directory)
     (when-not (.mkdirs directory)
       (throw (IOException. (str "cannot create directory "

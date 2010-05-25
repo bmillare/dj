@@ -14,8 +14,9 @@
       "index.html"
       (.getName (File. filename)))))
 
-(defn- wget-fixed [con content-length]
+(defn- wget-fixed
   "returns content from http connection in an array"
+  [con content-length]
   (with-open [stream (BufferedInputStream. (.getInputStream con))]
     (let [data (make-array Byte/TYPE content-length)]
       (loop [offset 0]
@@ -30,9 +31,10 @@
 	      (recur (+ offset bytes-read))))
 	  data)))))
 
-(defn wget! [url-address directory]
+(defn wget!
   "takes string or URL url-address and downloads file into directory,
 returns path to that file"
+  [url-address directory]
   (let [url (if (string? url-address) (URL. url-address) url-address)
 	filename (File. directory (extract-url-filename url))
 	con (.openConnection url)
