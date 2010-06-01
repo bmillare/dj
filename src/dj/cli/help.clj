@@ -23,7 +23,7 @@
 (defn load-tasks!
   "needed because of the help command needs all documentation loaded before hand"
   []
-  (doseq [f @cl/*classpaths*]
+  (doseq [f cl/+boot-classpaths+]
     (if (.isDirectory f)
       (doall (map #(load-file (.getCanonicalPath %)) (recursive-list f)))
       (doall (for [e (enumeration-seq (.entries (JarFile. f)))

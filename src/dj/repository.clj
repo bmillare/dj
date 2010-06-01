@@ -28,12 +28,12 @@
   "takes dependency form [group-id/artifact-id \"version\"] and
   returns String path prefix"
   [dependency]
-  (let [artifact-id (name (dependency 0))
-	group-id (or (.replaceAll (namespace (dependency 0))
+  (let [artifact-id (name (first dependency))
+	group-id (or (.replaceAll (namespace (first dependency))
 				  "\\."
 				  "/")
 		     artifact-id)
-	version (dependency 1)]
+	version (second dependency)]
     (str group-id "/"
 	 artifact-id "/"
 	 version "/"
@@ -55,7 +55,7 @@
   (str (if (= \/ (last repository-url))
 	 repository-url
 	 (str repository-url "/"))
-       (.getCanonicalPath (get-dependency-path-prefix dependency))
+       (get-dependency-path-prefix dependency)
        file-extension))
 
 (defn make-tmp-folder!
@@ -113,7 +113,9 @@
 		   (catch FileNotFoundException e
 		     (if (next repositories)
 		       (wget-from! (next repositories))
-		       (throw (FileNotFoundException. (.getFile (URL. url-pom))))))
+		       (throw (FileNotFoundException. (str "Can't find "
+							   (get-dependency-path-prefix dependency)
+							   ".pom from any remote repository")))))
 		   (finally (delete-recursive tmp-folder)))))]
 	 (if (and (.exists install-pom)
 		  (or pom-only? (.exists install-jar)))

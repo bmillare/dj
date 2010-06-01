@@ -25,6 +25,9 @@
       (in-ns old-ns)
       p)))
 
+(defn project-name-to-file [project-name]
+  (File. system-root (str "usr/src/" project-name)))
+
 (defn main [& [task & args]]
   (let [task (or task "help")]
     (apply (resolve-task task) args)))

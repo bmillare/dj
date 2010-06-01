@@ -41,8 +41,9 @@ versions concurrently.
 
 # Progress
 
--need to be able create directory in the live repository, a project.clj file
- and be able to start project from commandline
+-do src, dependencies
+-make live dependencies, version is "live", this means there still exists a skeleton in the src/repository
+
 
 # Limitations
 
@@ -62,7 +63,8 @@ clojure code or in shell scripting. Perhaps integrate a clojure server
 that starts new clojure applications where starting a new instance
 really just simply connects to that server and displays an
 interface. Startup time would decrease dramatically but would require
-a lot more work to setup.
+a lot more work to setup. Nailgun comes to mind however having it
+cooperate with clojure may prove difficult.
 
 # File Directory Structure
 
@@ -89,8 +91,6 @@ usr/src
  -repository for live projects
 usr/bin
  -native dep binaries
-usr/tmp
- -experimental repository
 etc/
  -system configuration files
 sbin/
@@ -110,6 +110,8 @@ tmp/dj
 tmp/repository
  -workspace for downloading/resolving dependencies before moving into
   the repository
+var/
+ -logs, crash reports
 
 # Script descriptions
 
