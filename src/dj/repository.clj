@@ -123,11 +123,3 @@
 	   (wget-from! repository-urls)))))
   ([dependency]
      (download-dependency! dependency false)))
-
-(defn testo []
-  ;;(wget! "http://build.clojure.org/releases/org/clojure/clojure/1.1.0/clojure-1.1.0.pom" (File. "/home/hara/.downloads/"))
-  ;;(wget! "http://clojure.org" (File. "/home/hara/.downloads/"))
-  (download-dependency! ['org.clojure/clojure-contrib "1.1.0"])
-  ;;(get-dependency-path ['org.clojure/clojure "1.1.0"] ".jar" local-repository-path)
-
-  )

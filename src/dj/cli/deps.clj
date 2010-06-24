@@ -8,11 +8,11 @@
 
   recursively determine dependencies for project on the fly"
   [& [project-name]]
-  (binding [dj.deps/options (merge dj.deps/options {:pretend true})]
-    (->
-     project-name
-     cli/project-name-to-file
-     cli/read-project
-     :dependencies
-     dj.deps/get-all-dependencies!
-     prn)))
+  (let [project-data (->
+		      project-name
+		      cli/project-name-to-file
+		      cli/read-project)]
+    (dj.deps/get-all-dependencies! (:dependencies project-data)
+				   {:hooks [(dj.deps/resolved-hook nil dj.deps/exclude-id)
+					    (dj.deps/exclude-hook (:exclusions project-data) dj.deps/exclude-id)]
+				    :pretend true})))

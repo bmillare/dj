@@ -13,17 +13,15 @@
    projects sources and jar dependencies"
   [& args]
   (if-let [project-name (first args)]
-    (let [get-deps (fn [p]
-		     (dj.deps/get-all-dependencies! (:dependencies p)
-						    (:exclusions p)))
-	  dependencies (->
+    (let [project-data (->
 			project-name
 			cli/project-name-to-file
-			cli/read-project
-			get-deps)]
+			cli/read-project)]
       (dj.classloader/with-new-classloader
 	project-name
-	dependencies
+	(dj.deps/get-all-dependencies! (:dependencies project-data)
+				       {:hooks [(dj.deps/resolved-hook nil dj.deps/exclude-id)
+						(dj.deps/exclude-hook (:exclusions project-data) dj.deps/exclude-id)]})
 	(clojure.main/main)))
     (clojure.main/main)))
 

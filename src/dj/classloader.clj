@@ -57,6 +57,3 @@
    assume empty environment"
   (let [caller-ns (symbol (ns-name *ns*))]
     `(eval (dj.classloader/with-new-classloader-helper '~caller-ns ~project-name ~dependencies '~body))))
-
-(defn testo []
-  nil)
