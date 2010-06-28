@@ -80,8 +80,8 @@ bin/
  -dj binaries and scripts to manage system
 src/
  -source code for dj
-lib/ classes/
- -for dj only, subject to removal
+lib/
+ -symlinks of system dependencies 
 
 -the remaining directories are ignored by git (listed in .gitignore)
 
@@ -101,7 +101,7 @@ sbin/
  -pretty much should contain the jdk and git
 opt/
  -location of system and native dependencies that need to persist
- -basically the install directory for java
+ -the install directory for java
  -installation of applications that don't fit the dj model
 tmp/
  -contains transient files

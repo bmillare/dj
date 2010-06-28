@@ -1,0 +1,142 @@
+Documentation for getting started. Subject to change as ideas are discussed and implemented.
+
+See README for further information.
+
+Note: Install scripts can make this process much smoother, but I
+believed that a walkthrough would help the user get a better feel for
+how the system is designed so the user can help improve its design
+
+Assumes java, git, and ant are installed on a *nix machine
+
+--Installation--
+
+Download using git:
+
+$ cd ~
+$ git clone git://github.com/bmillare/dj.git
+
+Create skeleton directories:
+
+$ cd dj
+$ mkdir -p usr/src usr/bin etc sbin opt tmp/dj var lib
+
+Add to path:
+
+Assuming ~/bin/ is in your path... (check .bashrc)
+
+$ cd ~/bin
+$ ln -s ~/dj/bin/run-dj-tool.sh dj
+
+Optional:
+
+If you prefer, create symlink wherever you prefer, such as /usr/local/bin.
+
+Also, I've included a rlwrap'd version of run-dj-tool.sh, so if rlwrap
+is installed on your system, link to ~/dj/bin/run-dj-tool-rlwrap.sh
+instead.
+
+Install clojure:
+
+Assumes ant is installed
+
+$ cd ~/dj/opt
+$ git clone http://github.com/richhickey/clojure.git
+$ cd clojure
+$ ant
+$ cd ~/dj/lib
+$ ln -s ../opt/clojure/clojure-1.2.0-master-SNAPSHOT.jar
+
+Optional:
+
+If you are using rlwrap, generate the completions.
+
+$ dj rlwrap make-completions
+
+--Basic Usage--
+
+Note:
+
+For help,
+
+$ dj
+
+or for help about a command
+
+$ dj help foo-command
+
+Lets make a hello world like project using dj:
+
+$ dj skeleton hw
+
+Notice that a directory named hello-world was created in ~/dj/usr/src/
+
+In dj, the location of the projects sources are managed by dj, not the
+user
+
+$ ls ~/dj/usr/src/hw
+project.clj src
+
+Edit the project.clj file to depend on clojure-contrib
+
+project.clj:
+(defproject hw "1.0.0" :dependencies [[org.clojure/clojure-contrib "1.2.0-SNAPSHOT"]])
+
+In the src/hw/ directory, create a clj file:
+
+src/hw/core.clj:
+(ns hw.core (:require [clojure.contrib.math]))
+
+(defn hello-world [] (print "hello world"))
+(defn math-test [] (clojure.contrib.math/expt 2 8))
+
+We can create a repl at anytime using:
+
+$ dj repl
+
+but, if we want the repl to include our project, we append the project name
+
+$ dj repl hw
+
+then we can try it out:
+
+user=> (require 'hw.core)
+nil
+user=> (hw.core/hello-world)
+hello worldnil
+user=> (hw.core/math-test)
+256
+
+If you check ~/dj/usr/
+
+$ ls ~/dj/usr/
+bin maven src
+
+There is a maven repository there. dj automatically downloaded the
+dependencies for hw in the local repository and constructed the
+classpath that includes the dependency on startup of hw.
+
+Notice that we can run
+
+$ dj repl hw
+
+anywhere we want.
+
+$ cd /
+$ dj repl hw
+
+again, dj manages finding the project and setting the classpath for
+you, similar to the way a *nix environment would know how to run the
+java command for you.
+
+You can organize dj/usr/src/ as a repository with subdirectories. To
+run a project, give the path relative to the dj/usr/src directory.
+
+So if we moved the hw project into the org folder,
+
+$ cd ~/dj/usr/src/
+$ mkdir org
+$ mv hw org
+
+we would start the hw project repl using
+
+$ dj repl org/hw
