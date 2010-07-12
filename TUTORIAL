@@ -140,3 +140,8 @@ $ mv hw org
 we would start the hw project repl using
 
 $ dj repl org/hw
+
+--Developing with emacs, inferior-lisp--
+in the .emacs file, add:
+
+(setq inferior-lisp-program "~/dj/bin/run-dj-tool.sh repl")

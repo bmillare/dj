@@ -19,7 +19,8 @@
 			cli/read-project)]
       (dj.classloader/with-new-classloader
 	project-name
-	(dj.deps/get-all-dependencies! (:dependencies project-data)
+	(dj.deps/get-all-dependencies! (concat (:dependencies project-data)
+					       (:native-dependencies project-data))
 				       {:hooks [(dj.deps/resolved-hook nil dj.deps/exclude-id)
 						(dj.deps/exclude-hook (:exclusions project-data) dj.deps/exclude-id)]})
 	(clojure.main/main)))

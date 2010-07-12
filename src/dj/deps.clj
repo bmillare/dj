@@ -136,6 +136,18 @@
 		       (println "resolving optional " dependency)))
 	 (post [this dependency] nil)))
 
+(defn native-hook
+  "resolve native-dependencies and install native dependencies
+
+supports pretend option"
+  []
+  (reify hook
+	 (predicate [this dependency] nil)
+	 (pre [this dependency] nil)
+	 (dependency [this dependency-map dependency]
+		     nil)
+	 (post [this dependency] nil)))
+
 (defmacro do-hooks [method hooks & args]
   (case (name method)
 	"predicate"
@@ -152,7 +164,9 @@
   "recursively determines and returns all dependencies for items in
   dependency-list. Preserves order, removes redundancies, raises
   errors on cyclic dependencies. Supports optional exclusions, a
-  collection of dependencies that are not to be resolved
+  collection of dependencies that are not to be resolved.
+
+  Now supports generic hooks to extend functionality
 
   TODO:
   -add support for excluding on just artifactid
