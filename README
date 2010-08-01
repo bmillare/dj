@@ -91,6 +91,10 @@ usr/src
  -repository for live projects
 usr/bin
  -native dep binaries
+usr/maven
+ -maven repository
+usr/native
+ -native repository
 etc/
  -system configuration files
 sbin/
@@ -100,7 +104,7 @@ sbin/
   and dj, this is designed to be minimal
  -pretty much should contain the jdk and git
 opt/
- -location of system and native dependencies that need to persist
+ -location of system and native system dependencies that need to persist
  -the install directory for java
  -installation of applications that don't fit the dj model
 tmp/

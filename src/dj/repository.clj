@@ -1,14 +1,13 @@
 (ns dj.repository
   (:import [java.io File FileNotFoundException IOException])
   (:import [java.net URL])
+  (:require [clojure.java.io :as io])
   (:use [dj.net :only [wget!]])
   (:use [dj.core :only [system-root]]))
 
 (defn file
-  ([#^File path]
-     (.getCanonicalFile (File. path)))
-  ([parent child]
-     (.getCanonicalFile (File. parent child))))
+  [& args]
+  (.getCanonicalFile (apply io/file args)))
 
 (def repository-urls ["http://repo1.maven.org/maven2"
 		      "http://clojars.org/repo/"])
@@ -87,15 +86,14 @@
 
 (defn download-dependency!
   "downloads files for a single dependency if not in local repository,
-  returns install folder path
+  returns file path
 
   options
   pom-only? does not download jar files, useful for determining
   dependencies before installing"
   ([dependency pom-only?]
      (let [install-jar (get-dependency-path dependency ".jar")
-	   install-pom (get-dependency-path dependency ".pom")
-	   install-folder (.getParentFile install-pom)]
+	   install-pom (get-dependency-path dependency ".pom")]
        (letfn [(wget-from!
 		[repositories]
 		"attempt to get dependency from repositories in order,
@@ -106,10 +104,10 @@
 		  (try
 		   (let [downloaded-pom (wget! url-pom tmp-folder)
 			 downloaded-jar (when-not pom-only? (wget! url-jar tmp-folder))]
-		     (make-directory! install-folder)
+		     (make-directory! (.getParentFile install-pom))
 		     (when-not pom-only? (.renameTo downloaded-jar install-jar))
 		     (.renameTo downloaded-pom install-pom)
-		     install-folder)
+		     install-jar)
 		   (catch FileNotFoundException e
 		     (if (next repositories)
 		       (wget-from! (next repositories))
@@ -119,7 +117,7 @@
 		   (finally (delete-recursive tmp-folder)))))]
 	 (if (and (.exists install-pom)
 		  (or pom-only? (.exists install-jar)))
-	   install-folder
+	   install-jar
 	   (wget-from! repository-urls)))))
   ([dependency]
      (download-dependency! dependency false)))
