@@ -2,6 +2,7 @@
   (:require [clojure.xml :as xml])
   (:require [clojure.set :as set])
   (:require [dj.repository :as repo])
+  (:require [dj.cli])
   (:require [dj.core :as core]))
 
 (def options {:pretend nil
@@ -214,6 +215,65 @@
 	  (resolve-dependency dependency))
 	@result))))
 
+#_ (defn get-all-dependencies-fix!
+  "recursively determines and returns all dependencies for items in
+  dependency-list. Preserves order, removes redundancies, raises
+  errors on cyclic dependencies. Supports optional exclusions, a
+  collection of dependencies that are not to be resolved.
+
+  Now supports generic hooks to extend functionality
+
+  TODO:
+  -add support for excluding on just artifactid
+  -handle ${extrastuff} forms in xml file
+  -add support for source dependencies in the live repository
+  -add support for optional dependencies
+
+  algorithm is just modify data structures during traversal of
+  dependency tree"
+  [project-name]
+  (binding [options (apply merge options {})]
+    (let [seen (ref #{})  ;; circular dependency detection
+	  result (ref []) ;; preserve order
+	  src-files (ref [])
+	  native-files (ref [])
+	  {:keys [modify predicate pre dependency post]} (make-hook-fns (:hooks options))]
+      (letfn [(resolve-src-dependency
+	       [name]
+	       (let [project-data (->
+				   name
+				   dj.cli/project-name-to-file
+				   dj.cli/read-project)]
+		 ;; pre,post,etc functions do not work on names
+		 (doseq [n (:include-projects project-data)]
+		   (resolve-src-dependency n))
+		 ;; get-all-native will need to turn to hooks to do seens
+		 ;; (get-all-native! (:native-dependencies project-data))
+		 (doseq [d (:dependencies project-data)]
+		   (resolve-dependency d))))
+	      (resolve-dependency
+	       ;; walk tree
+	       [d]
+	       (let [d (qualify-dependency d)] ;; modify qualify to understand src dependencies
+		 (when (:verbose options) (println "resolving " d))
+		 (when-not (predicate d)
+		   (if (@seen d)
+		     (throw (Exception. "Circular dependency detected"))
+		     (do
+		       (dosync (alter seen conj d))
+		       (pre d)
+		       (doall (map resolve-dependency ;; case statement to do different things with native and src deps
+				   (get-direct-dependencies! d
+							     dependency)))
+		       (dosync
+			(alter seen disj d)
+			(alter result conj d))
+		       (post d))))))]
+	(resolve-src-dependency project-name)
+	{:src src-files
+	 :jar (for [d @result] (repo/get-dependency-path d ".jar"))
+	 :native (seq (set (map #(.getParentFile %) native-files)))}))))
+
 (defn unjar [#^java.io.File jar-file install-dir]
   (let [jar-file (java.util.jar.JarFile. jar-file)]
    (for [entry (enumeration-seq (.entries jar-file))
@@ -228,9 +288,9 @@
 	     (.write out-stream (.read in-stream))
 	     (recur))))))))
 
-(defn get-all-native!
-  "resolve native-dependencies and install native dependencies"
-  [dependency-list]
+(defn get-native!
+  "resolve and install native dependency"
+  [dependency]
   ;; property for
   ;; os.name  platforms
   ;; os.arch  architectures
@@ -244,19 +304,33 @@
 		       "i386" "x86"
 		       "arm" "arm"
 		       "sparc" "sparc"}
-	pairs (doall
-	       (for [dependency dependency-list]
-		 (let [install-dir (repo/file core/system-root
-					      "./usr/native/"
-					      (repo/get-dependency-path-prefix dependency))]
-		   (if (.exists install-dir)
-		     (println install-dir "exists, skipping")
-		     (prn (unjar (repo/file (repo/download-dependency! dependency))
-				install-dir)))
-		   [(seq (.listFiles (repo/file install-dir "./lib/")))
-		    (seq (.listFiles (repo/file install-dir "./native/"
-						(platforms (System/getProperty "os.name"))
-						(architectures (System/getProperty "os.arch")))))])))]
-    {:jars (apply concat (map first pairs))
-     :libs (apply concat (map second pairs))}))
+	install-dir (repo/file core/system-root
+			       "./usr/native/"
+			       (repo/get-dependency-path-prefix dependency))]
+    (if (.exists install-dir)
+      (println install-dir "exists, skipping")
+      (prn (unjar (repo/file (repo/download-dependency! dependency))
+		  install-dir)))
+    [(seq (.listFiles (repo/file install-dir "./lib/")))
+     (seq (.listFiles (repo/file install-dir "./native/"
+				 (platforms (System/getProperty "os.name"))
+				 (architectures (System/getProperty "os.arch")))))]))
+
+(defn transpose
+  "nested vectors matrix"
+  [m]
+  (vec (apply map vector m)))
+
+(defn get-all-native!
+  "resolve all native dependencies"
+  [dependency-list]
+  ;; property for
+  ;; os.name  platforms
+  ;; os.arch  architectures
+  (when dependency-list
+    (let [[[jars] [libs]] (transpose (doall
+				      (for [dependency dependency-list]
+					(get-native! dependency))))]
+      {:jars jars
+       :libs libs})))
 

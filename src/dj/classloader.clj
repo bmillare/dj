@@ -44,12 +44,11 @@
      (in-ns '~caller-ns)
      (def ~'*classloader* cl#)
      ;; Reset java.library.path by setting sys_paths variable in java.lang.ClassLoader to NULL, depends on java implementation knowledge
-     (doall (for [p# ~native-paths]
-	      (let [clazz# java.lang.ClassLoader
-		    field# (.getDeclaredField clazz# "sys_paths")] 
-		(.setAccessible field# true)
-		(.set field# clazz# nil)
-		(System/setProperty "java.library.path" p#))))
+     (let [clazz# java.lang.ClassLoader
+	   field# (.getDeclaredField clazz# "sys_paths")] 
+       (.setAccessible field# true)
+       (.set field# clazz# nil)
+       (System/setProperty "java.library.path" (apply str (interpose ";" ~native-paths))))
      (doall (for [p# ~src-paths]
 	      (dj.classloader/add-to-classpath! cl# p#)))
      (doall (for [p# ~jar-paths]
