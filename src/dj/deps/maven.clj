@@ -176,8 +176,7 @@ snapshot"
 		      (.renameTo downloaded-jar local-jar)
 		      (.renameTo downloaded-pom local-pom)
 		      (.renameTo downloaded-xml local-xml)
-		      (dj.core/log (.exists local-jar))
-		      (dj.core/log local-jar)))
+		      local-jar))
 		  (dj.io/with-tmp-directory tmp-folder (dj.io/file dj.core/system-root "tmp/repository")
 		    (let [file-prefix (str (:name dependency) "-" (:version dependency))
 			  downloaded-pom (dj.net/wget! (str remote-directory file-prefix ".pom") tmp-folder)
@@ -206,10 +205,10 @@ snapshot"
 	       (obtain-snapshot-maven dependency offline?)
 	       (obtain-normal-maven dependency)))
    :depends-on (fn [d]
-		 (let [pom-cache (dj.core/log (:pom-cache d))
+		 (let [pom-cache (:pom-cache d)
 		       project-data (:project (if @pom-cache
 						@pom-cache
-						(reset! pom-cache (-> (pom-file (dj.core/log d))
+						(reset! pom-cache (-> (pom-file d)
 								      clojure.xml/parse
 								      condense-xml))))]
 		   (for [{d :dependency} (find-map-entry project-data :dependencies)

@@ -19,7 +19,6 @@
 			      (fn [d] (= (:name d)
 					 "clojure"))))
 	exclude? (fn [d] (loop [r (seq @exclusion-rules)]
-			   (core/log r)
 			   (when r
 			     (if ((first r) d)
 			       true
@@ -30,21 +29,21 @@
 			(println "src-paths" @src-paths)
 			(println "jar-paths" @jar-paths)
 			(println "native-paths" @native-paths))
-		      (when-not (or (@resolved d) (core/log (exclude? d)))
+		      (when-not (or (@resolved d) (exclude? d))
 			(if (@seen d)
 			  (throw (Exception. (str "Circular dependency detected resolving " d)))
-			  (let [obtained (core/log (dj.deps.core/obtain d))]
+			  (let [obtained (dj.deps.core/obtain d)]
 			    (dosync (alter seen conj d)
 				    (when-let [rules (dj.deps.core/exclusions d)]
 				      (alter exclusion-rules concat rules)))
-			    (doall (map resolve! (core/log (dj.deps.core/depends-on d))))
+			    (doall (map resolve! (dj.deps.core/depends-on d)))
 			    (dosync (alter seen disj d)
 				    (alter resolved conj d)
-				    (case (core/log (dj.deps.core/load-type d))
+				    (case (dj.deps.core/load-type d)
 					  :src (alter src-paths conj obtained)
 					  :jar (alter jar-paths conj obtained)
 					  :native (alter native-paths conj obtained)))))))]
     (doall (map letresolve! dependencies))
-    [(map dj.io/string (core/log @src-paths))
-     (map dj.io/string (core/log @jar-paths))
-     (map dj.io/string (core/log @native-paths))]))
+    [(map dj.io/string @src-paths)
+     (map dj.io/string @jar-paths)
+     (map dj.io/string @native-paths)]))
