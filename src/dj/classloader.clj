@@ -1,7 +1,8 @@
 (ns dj.classloader
   (:import [java.io File])
   (:import [java.net URISyntaxException])
-  (:require [dj.repository :as repo])
+  (:require [dj.io])
+  (:require [dj.deps.maven])
   (:require [dj.core]))
 
 (def +boot-classpaths+
@@ -55,12 +56,6 @@
 	      (dj.classloader/add-to-classpath! cl# p#)))
      ~@body))
 
-;; (java.io.File. dj.core/system-root (str "usr/src/" ~project-name "/src"))
-;; (defn add-dependency-to-classpath!
-;;   "given dependency, adds it to classpath for current classloader"
-;;   [classloader dependency]
-;;   (add-to-classpath! classloader (repo/get-dependency-path dependency ".jar")))
-
 (defmacro with-new-classloader [src-paths
 				jar-paths
 				native-paths
@@ -70,7 +65,7 @@
   (let [caller-ns (symbol (ns-name *ns*))]
     `(eval (dj.classloader/with-new-classloader-helper
 	     '~caller-ns
-	     ~src-paths
-	     ~jar-paths
-	     ~native-paths
+	     (vec ~src-paths)
+	     (vec ~jar-paths)
+	     (vec ~native-paths)
 	     '~body))))

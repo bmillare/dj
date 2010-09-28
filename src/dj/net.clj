@@ -1,6 +1,6 @@
 (ns dj.net
   (:import [java.io File FileOutputStream BufferedInputStream BufferedReader InputStreamReader])
-  (:import [java.net URL]))
+  (:import [java.net URL HttpURLConnection]))
 
 (defn blank?
   "True if s is nil, empty, or contains only whitespace."
@@ -45,3 +45,12 @@ returns path to that file"
      (throw (Exception. (str "TODO: Implement downloader for undefined content-length: "
 			     content-length))))
     filename))
+
+(defn exists?
+  [URLName]
+  (HttpURLConnection/setFollowRedirects false)
+  (= (.getResponseCode
+      (doto (.openConnection (URL. URLName))
+	(.setInstanceFollowRedirects false)
+	(.setRequestMethod "HEAD")))
+     HttpURLConnection/HTTP_OK))
