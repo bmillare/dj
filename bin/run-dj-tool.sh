@@ -20,7 +20,7 @@ done
 
 BIN_DIR="$(dirname "$SCRIPT")"
 DJ_DIR="$(dirname "$BIN_DIR")"
-CLOJURE_VERSION="1.2.0-master-SNAPSHOT"
+CLOJURE_VERSION="1.2.0"
 
 # escape command-line arguments so they can be evaled as strings
 ESCAPED_ARGS=""
