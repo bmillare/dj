@@ -25,10 +25,9 @@
 			       (recur (next r))))))
 	letresolve! (fn resolve! [d]
 		      (when (:verbose options)
-			(println "resolving" d)
-			(println "src-paths" @src-paths)
-			(println "jar-paths" @jar-paths)
-			(println "native-paths" @native-paths))
+			(if (exclude? d)
+			  (println "excluding" d)
+			  (println "resolving" d)))
 		      (when-not (or (@resolved d) (exclude? d))
 			(if (@seen d)
 			  (throw (Exception. (str "Circular dependency detected resolving " d)))
