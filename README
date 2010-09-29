@@ -23,20 +23,23 @@ for how to install dj with your own version of clojure.
 
 # Feature list
 
-* Extracts dependency information from project.clj file just as
-  leiningen and cake do
+* Practically no dependencies, only needs clojure and java.
 
 * Supports source dependencies, you can have your project depend on
-  other projects you are developing
-
-* Supports native dependencies
+  other projects you are developing.
 
 * Everything is installed locally to a directory, no messing up
   existing configuration files and repositories. If you want, you can
-  have multiple dj distributions on the same computer.
+  have multiple dj distributions on the same computer. This should
+  simplfy deploying dj onto different systems.
 
 * Classpath is computed during runtime. No forking of the jvm is
   required. No copying or symlinking of jar files.
+
+* Supports native dependencies
+
+* Extracts dependency information from project.clj file just as
+  leiningen and cake do
 
 * Easy to extend adding new dependency types or new tasks
 
