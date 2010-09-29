@@ -3,11 +3,59 @@
 "dj takes the cacaphony of java, git, clojure, and build tools and
 mixes it into something harmonious."
 
-In a nutshell, dj is an attempt to make a clojure distribution. In the
-same way that debian (and APT) is to linux, dj is to clojure. There
-are advantages to having a standard directory layout and providing
-tools that integrate the various applications and developer tools. dj
-is a combination of specifications and tools.
+In a nutshell, dj is an attempt to make a clojure distribution. Like
+leiningen and maven, dj resolves dependencies, however, dj tries to be
+more like debian's APT or gentoo's portage and provide tools to manage
+your projects as if it were a part of a larger ecosystem of
+repositories, configuration files, jar files, project sources, and
+native dependencies.
+
+# Quick Start
+
+For the impatient, simply download and run the install.sh file
+http://github.com/bmillare/dj/blob/generaldep/bin/install.sh
+
+The script assumes you have *nix environment with java, wget, unzip
+and git installed.
+
+If you are inclined, you can work through the TUTORIAL to get a feel
+for how to install dj with your own version of clojure.
+
+# Feature list
+
+* Extracts dependency information from project.clj file just as
+  leiningen and cake do
+
+* Supports source dependencies, you can have your project depend on
+  other projects you are developing
+
+* Supports native dependencies
+
+* Everything is installed locally to a directory, no messing up
+  existing configuration files and repositories. If you want, you can
+  have multiple dj distributions on the same computer.
+
+* Classpath is computed during runtime. No forking of the jvm is
+  required. No copying or symlinking of jar files.
+
+* Easy to extend adding new dependency types or new tasks
+
+# Short Term Todo
+
+* Merge native dependencies with generaldep branch
+
+# Long Term Todo
+
+* git versioning, git dependencies
+* bootstrap everything (including java, gcc?) on any computer?
+
+======================================================================
+
+# Old Notes
+
+dj leverages the advantages of having a standard
+directory layout for configuration files, jar files, and project
+directories by supply tools to integrate them all together.
 
 # Informal Specifications
 
@@ -38,12 +86,6 @@ itself. There should be tools that support versioning by the commit
 hash or svn number while still preserving the live, unversioned
 code. Different projects should also be able to access different
 versions concurrently.
-
-# Progress
-
--do src, dependencies
--make live dependencies, version is "live", this means there still exists a skeleton in the src/repository
-
 
 # Limitations
 
