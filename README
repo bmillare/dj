@@ -46,6 +46,7 @@ for how to install dj with your own version of clojure.
 # Short Term Todo
 
 * Merge native dependencies with generaldep branch
+* dj repl [maven dependency form]
 
 # Long Term Todo
 
