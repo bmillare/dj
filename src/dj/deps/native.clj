@@ -17,7 +17,7 @@
 ;; implement later
 (extend native-dependency
   ADependency
-  {:obtain (fn [d]
+  {:obtain (fn [d _]
 	     nil)
    :depends-on (fn [d]
 		 nil)

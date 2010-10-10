@@ -21,7 +21,7 @@
 
 (extend project-dependency
   ADependency
-  {:obtain (fn [d]
+  {:obtain (fn [d _]
 	     (dj.io/file system-root (str "usr/src/" (:name d) "/src")))
    :depends-on (fn [d]
 		 (let [project-data (-> (:name d)

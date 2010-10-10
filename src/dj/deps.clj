@@ -31,7 +31,7 @@
 		      (when-not (or (@resolved d) (exclude? d))
 			(if (@seen d)
 			  (throw (Exception. (str "Circular dependency detected resolving " d)))
-			  (let [obtained (dj.deps.core/obtain d)]
+			  (let [obtained (dj.deps.core/obtain d options)]
 			    (dosync (alter seen conj d)
 				    (when-let [rules (dj.deps.core/exclusions d)]
 				      (alter exclusion-rules concat rules)))

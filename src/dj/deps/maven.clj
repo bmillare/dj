@@ -200,7 +200,7 @@ snapshot"
 
 (extend maven-dependency
   ADependency
-  {:obtain (fn [dependency & {:keys [offline?]}]
+  {:obtain (fn [dependency {:keys [offline?]}]
 	     (if (is-snapshot? dependency)
 	       (obtain-snapshot-maven dependency offline?)
 	       (obtain-normal-maven dependency)))

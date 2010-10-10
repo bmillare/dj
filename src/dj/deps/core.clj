@@ -4,7 +4,7 @@
 
 (defprotocol ADependency
   "allow dj to resolve and fulfill dependency"
-  (obtain [d] "installs only itself into repository")
+  (obtain [d options] "installs only itself into repository")
   (depends-on [d] "returns dependencies of d")
   (load-type [d] "returns type of dependency for loading #{:src :jar :native}")
   (exclusions [d] "returns a vector of exclusion rules, rules are

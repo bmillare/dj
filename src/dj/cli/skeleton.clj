@@ -14,6 +14,6 @@
 	(.mkdir (File. dir "src"))
 	(.mkdir (File. dir (str "src/" project-name)))
 	(spit (File. dir "project.clj")
-	      (prn-str `(~'defproject ~(symbol project-name) "1.0.0"
+	      (prn-str `(~'defproject ~(symbol project-name) "0.1.0"
 			  :dependencies [[foo.bar/baz "1.0.0"]])))))))
 
