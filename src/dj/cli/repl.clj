@@ -20,9 +20,9 @@
 				false
 				(keyword a))))
 	  default-options {:verbose true}
-	  options (if args
-		    (apply assoc default-options args)
-		    default-options)
+	  options (if (empty? args)
+		    default-options
+		    (apply assoc default-options args))
 	  [src-paths jar-paths native-paths] (dj.deps/obtain-dependencies! [(dj.deps.project.project-dependency. project-name)] options)]
       (dj.classloader/with-new-classloader
 	src-paths
