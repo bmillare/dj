@@ -15,10 +15,10 @@
    projects sources and jar dependencies"
   [& args]
   (if-let [project-name (first args)]
-    (let [args (dj.core/log (for [a (next args)]
-			      (if (= a "false")
-				false
-				(keyword a))))
+    (let [args (for [a (next args)]
+		 (if (= a "false")
+		   false
+		   (keyword a)))
 	  default-options {:verbose true}
 	  options (if (empty? args)
 		    default-options

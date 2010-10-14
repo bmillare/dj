@@ -9,10 +9,3 @@
        (assoc m#
 	 :name ~(name project-name)
 	 :version ~version))))
-
-(defmacro log
-  [code]
-  `(let [c# ~code]
-     (prn '~code)
-     (prn c#)
-     c#))
