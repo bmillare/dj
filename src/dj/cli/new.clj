@@ -4,7 +4,7 @@
   (:import [java.io File]))
 
 (defn main
-  "USAGE: dj skeleton project-name"
+  "USAGE: dj new project-name"
   [& [project-name]]
   (let [dir (File. dj/system-root (str "usr/src/" project-name))]
     (if (.exists dir)
