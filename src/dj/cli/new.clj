@@ -1,4 +1,4 @@
-(ns dj.cli.skeleton
+(ns dj.cli.new
   "make a new project directory in dj/usr/src"
   (:require [dj.core :as dj])
   (:import [java.io File]))
