@@ -14,14 +14,14 @@ native dependencies.
 
 ## Standalone script
 
-1. Download http://github.com/bmillare/dj/blob/generaldep/bin/install.sh
+1. Download wget --no-check-certificate 'http://github.com/bmillare/dj/blob/master/bin/install.sh'
 2. Put somewhere in path, 'chmod +x install.sh' to make executable and run
 
 ## Manual Install
 
 1. git clone git://github.com/bmillare/dj.git
 2. cd dj; mkdir -p usr/src usr/bin etc sbin opt tmp/dj var lib
-3. cd opt; wget http://github.com/downloads/clojure/clojure/clojure-1.2.0.zip
+3. cd opt; wget --no-check-certificate 'http://github.com/bmillare/dj/blob/master/bin/install.sh'
 4. unzip clojure-1.2.0.zip
 5. cd ../lib
 6. ln -s ../opt/clojure-1.2.0/clojure.jar clojure.jar
