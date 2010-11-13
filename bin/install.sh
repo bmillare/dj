@@ -3,7 +3,6 @@ echo "Assumes java, git are installed"
 echo "Installing dj"
 git clone git://github.com/bmillare/dj.git
 cd dj
-git checkout -b local origin/generaldep
 mkdir -p usr/src usr/bin etc sbin opt tmp/dj var lib
 echo "Installing clojure"
 cd opt
