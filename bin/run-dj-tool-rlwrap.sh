@@ -20,7 +20,6 @@ done
 
 BIN_DIR="$(dirname "$SCRIPT")"
 DJ_DIR="$(dirname "$BIN_DIR")"
-CLOJURE_VERSION="1.2.0"
 
 # escape command-line arguments so they can be evaled as strings
 ESCAPED_ARGS=""
@@ -32,4 +31,4 @@ breakchars="(){}[],^%$#@\"\";:''|\\"
 exec rlwrap --remember -c -b "$breakchars" \
     -f "$DJ_DIR"/etc/rlwrap-clj-completions \
     -H "$DJ_DIR"/etc/rlwrap-clj-history \
-    java -Duser.dir=$DJ_DIR -cp "$DJ_DIR/lib/clojure-$CLOJURE_VERSION.jar:$DJ_DIR/src" clojure.main -e "(use 'dj.cli) (main $ESCAPED_ARGS)"
+    java -Duser.dir=$DJ_DIR -cp "$DJ_DIR/lib/clojure.jar:$DJ_DIR/src" clojure.main -e "(use 'dj.cli) (main $ESCAPED_ARGS)"

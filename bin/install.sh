@@ -10,7 +10,7 @@ cd opt
 wget http://github.com/downloads/clojure/clojure/clojure-1.2.0.zip
 unzip clojure-1.2.0.zip
 cd ../lib
-ln -s ../opt/clojure-1.2.0/clojure.jar clojure-1.2.0.jar
+ln -s ../opt/clojure-1.2.0/clojure.jar clojure.jar
 
 echo "==================== IMPORTANT ===================="
 echo "Symlink dj/bin/run-dj-tool.sh to your path"

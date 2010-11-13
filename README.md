@@ -12,8 +12,21 @@ native dependencies.
 
 # Quick Start
 
-For the impatient, simply download and run the install.sh file
-http://github.com/bmillare/dj/blob/generaldep/bin/install.sh
+## Standalone script
+
+1. Download http://github.com/bmillare/dj/blob/generaldep/bin/install.sh
+2. Put somewhere in path, 'chmod +x install.sh' to make executable and run
+
+## Manual Install
+
+1. git clone git://github.com/bmillare/dj.git
+2. cd dj; mkdir -p usr/src usr/bin etc sbin opt tmp/dj var lib
+3. cd opt; wget http://github.com/downloads/clojure/clojure/clojure-1.2.0.zip
+4. unzip clojure-1.2.0.zip
+5. cd ../lib
+6. ln -s ../opt/clojure-1.2.0/clojure.jar clojure.jar
+7. symlink dj/bin/run-dj-tool.sh to your path
+   cd ~/; ln -s dj/bin/run-dj-tool.sh dj
 
 The script assumes you have *nix environment with java, wget, unzip
 and git installed.
