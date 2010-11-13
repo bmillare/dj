@@ -58,7 +58,6 @@ for how to install dj with your own version of clojure.
 
 # Short Term Todo
 
-* Merge native dependencies with generaldep branch
 * dj repl [maven dependency form]
 
 # Long Term Todo
@@ -127,12 +126,12 @@ cooperate with clojure may prove difficult.
 
 # File Directory Structure
 
--The design of the directory hierarchy is based of the design of linux's
+* The design of the directory hierarchy is based of the design of linux's
  specifically, gentoo's
--combined with chroot, every time you create a directory with these
+* combined with chroot, every time you create a directory with these
  subdirectories, you create a new system, thus you can have many
  clojure systems on one computer
--the only way to run concurrently different systems is (under unix)
+* the only way to run concurrently different systems is (under unix)
  to create new bash environments each time
 
 bin/
@@ -179,48 +178,42 @@ var/
 # Script descriptions
 
 setup-directories.sh
--create directories
+* create directories
 boostrap-system-deps.sh
--download install java
--download, build, install git
--not normal way, not necessary if you can bootstrap system deps from
+* download install java
+* download, build, install git
+* not normal way, not necessary if you can bootstrap system deps from
  the host distribution/OS
 
 # dj concepts
 
 system
--a checkout/snapshot of the dj project with its dependencies
+* a checkout/snapshot of the dj project with its dependencies
  fulfilled
 
 live dependency
--a dependency on the current state (live) of some project's directory
--should just be a path
--to deal with directory name collisions, append directory with a slot,
+* a dependency on the current state (live) of some project's directory
+* should just be a path
+* to deal with directory name collisions, append directory with a slot,
  which is just a counter, e.g. leiningen-1, leinigen-2
--dj should be able to wrap generating folder names for you, dj will
+* dj should be able to wrap generating folder names for you, dj will
  just increment the largest value, names are arbitrary, and a name
  without a counter is considered the 0 directory
--the code you work on in a typical leiningen project is considered
+* the code you work on in a typical leiningen project is considered
  live dependencies, which have the property that if you change the
  files, reloading the file should change the definition
 
 checkout dependency
--a dependency on project directory with a particular commit
--dj should automatically download project and switch to version/commit
+* a dependency on project directory with a particular commit
+* dj should automatically download project and switch to version/commit
 
 # dj ideas for cli
 
--update, updates system dependencies
--dj swank, launch a swank server
--dj jar, make a jar of project
--dj install, install in local repository
--dj upload, install in remote repository
-
-# INSTALL instructions
-
--download and extract dj snapshot for architecture/OS
-TODO
--run update
+* update, updates system dependencies
+* dj swank, launch a swank server
+* dj jar, make a jar of project
+* dj install, install in local repository
+* dj upload, install in remote repository
 
 # adding tasks
 
