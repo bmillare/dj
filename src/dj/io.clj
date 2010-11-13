@@ -53,3 +53,17 @@
      (try
        ~@body
        (finally (delete-recursive ~temporary-folder-symbol)))))
+
+(defn unjar [^java.io.File jar-file install-dir]
+  (let [jar-file (java.util.jar.JarFile. jar-file)]
+    (for [entry (enumeration-seq (.entries jar-file))
+	  :let [f (file install-dir (.getName entry))]]
+      (if (.isDirectory entry)
+	(.mkdirs f)
+	(with-open [in-stream (.getInputStream jar-file entry)
+		    out-stream (java.io.FileOutputStream. f)]
+	  (loop []
+	    (when (> (.available in-stream)
+		     0)
+	      (.write out-stream (.read in-stream))
+	      (recur))))))))

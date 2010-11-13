@@ -41,7 +41,9 @@
 				    (case (dj.deps.core/load-type d)
 					  :src (alter src-paths conj obtained)
 					  :jar (alter jar-paths conj obtained)
-					  :native (alter native-paths conj obtained)))))))]
+					  :native (let [[jars libs] obtained]
+						    (alter jar-paths concat jars)
+						    (alter native-paths concat libs))))))))]
     (doall (map letresolve! dependencies))
     [(map dj.io/string @src-paths)
      (map dj.io/string @jar-paths)

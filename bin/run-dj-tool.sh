@@ -28,4 +28,4 @@ for ARG in "$@"; do
   ESCAPED_ARGS="$ESCAPED_ARGS"' "'$(echo $ARG | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g')'"'
 done
 
-exec java -Duser.dir=$DJ_DIR -cp "$DJ_DIR/lib/clojure-$CLOJURE_VERSION.jar:$DJ_DIR/src" clojure.main -e "(use 'dj.cli) (main $ESCAPED_ARGS)"
+exec java -server -Duser.dir=$DJ_DIR -cp "$DJ_DIR/lib/clojure-$CLOJURE_VERSION.jar:$DJ_DIR/src" clojure.main -e "(use 'dj.cli) (main $ESCAPED_ARGS)"

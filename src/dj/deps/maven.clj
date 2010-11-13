@@ -202,56 +202,60 @@ snapshot"
  returns file path snapshots always get a fresh copy unless in offline
  mode"
 
+(defn maven-exclusions [d]
+  (let [pom-cache (:pom-cache d)
+	project-data (:project (if @pom-cache
+				 @pom-cache
+				 (reset! pom-cache (-> (pom-file d)
+						       clojure.xml/parse
+						       condense-xml))))]
+    (seq (concat (for [{dependency :dependency} (find-map-entry project-data :dependencies)
+		       :let [y (seq (concat (for [{e :exclusion} (find-map-entry dependency :exclusions)
+						  :let [x (let [e-data (loop [c e
+									      name-group {}]
+									 (if c
+									   (let [x (first c)]
+									     (case (first (keys x))
+										   :groupId (recur (next c) (assoc name-group :group (first (:groupId x))))
+										   :artifactId (recur (next c) (assoc name-group :name (first (:artifactId x))))))
+									   name-group))]
+							    (fn [d] (and (= (:group d) (:group e-data))
+									 (= (:name d) (:name e-data)))))]
+						  :when x]
+					      x)))]
+		       :when y]
+		   y)))))
+
+(defn maven-depends-on [d]
+  (let [pom-cache (:pom-cache d)
+	project-data (:project (if @pom-cache
+				 @pom-cache
+				 (reset! pom-cache (-> (pom-file d)
+						       clojure.xml/parse
+						       condense-xml))))]
+    (for [{d :dependency} (find-map-entry project-data :dependencies)
+	  :let [d-data (loop [c d
+			      name-version-group {}]
+			 (if c
+			   (let [x (first c)]
+			     (case (first (keys x))
+				   :groupId (recur (next c) (assoc name-version-group :group (first (:groupId x))))
+				   :artifactId (recur (next c) (assoc name-version-group :name (first (:artifactId x))))
+				   :version (recur (next c) (assoc name-version-group :version (first (:version x))))
+				   :scope nil))
+			   name-version-group))]
+	  :when d-data]
+      (make-maven-dependency (:name d-data) (:version d-data) (:group d-data)))))
+
 (extend maven-dependency
   ADependency
   {:obtain (fn [dependency {:keys [offline?]}]
 	     (if (is-snapshot? dependency)
 	       (obtain-snapshot-maven dependency offline?)
 	       (obtain-normal-maven dependency)))
-   :depends-on (fn [d]
-		 (let [pom-cache (:pom-cache d)
-		       project-data (:project (if @pom-cache
-						@pom-cache
-						(reset! pom-cache (-> (pom-file d)
-								      clojure.xml/parse
-								      condense-xml))))]
-		   (for [{d :dependency} (find-map-entry project-data :dependencies)
-			 :let [d-data (loop [c d
-					     name-version-group {}]
-					(if c
-					  (let [x (first c)]
-					    (case (first (keys x))
-						  :groupId (recur (next c) (assoc name-version-group :group (first (:groupId x))))
-						  :artifactId (recur (next c) (assoc name-version-group :name (first (:artifactId x))))
-						  :version (recur (next c) (assoc name-version-group :version (first (:version x))))
-						  :scope nil))
-					  name-version-group))]
-			 :when d-data]
-		     (make-maven-dependency (:name d-data) (:version d-data) (:group d-data)))))
+   :depends-on maven-depends-on
    :load-type (fn [d] :jar)
-   :exclusions (fn [d]
-		 (let [pom-cache (:pom-cache d)
-		       project-data (:project (if @pom-cache
-						@pom-cache
-						(reset! pom-cache (-> (pom-file d)
-								      clojure.xml/parse
-								      condense-xml))))]
-		   (seq (concat (for [{dependency :dependency} (find-map-entry project-data :dependencies)
-				      :let [y (seq (concat (for [{e :exclusion} (find-map-entry dependency :exclusions)
-						     :let [x (let [e-data (loop [c e
-										 name-group {}]
-									    (if c
-									      (let [x (first c)]
-										(case (first (keys x))
-										      :groupId (recur (next c) (assoc name-group :group (first (:groupId x))))
-										      :artifactId (recur (next c) (assoc name-group :name (first (:artifactId x))))))
-									      name-group))]
-							       (fn [d] (and (= (:group d) (:group e-data))
-									    (= (:name d) (:name e-data)))))]
-						     :when x]
-							     x)))]
-				      :when y]
-				  y)))))})
+   :exclusions maven-exclusions})
 
 ;; TODO
 ;; write obtain

@@ -1,6 +1,7 @@
 (ns dj.deps.project
   (:require [dj.io])
   (:require [dj.cli])
+  (:require [dj.deps.native])
   (:use [dj.deps.core])
   (:use [dj.core :only [system-root]]))
 

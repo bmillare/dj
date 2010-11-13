@@ -26,8 +26,13 @@
 (defmethod view
     clojure.lang.LazySeq
   [content]
-  (doseq [v content]
+  (for [v content]
     (view v)))
+
+(defmethod view
+    clojure.lang.Var
+  [content]
+  (str (:name (meta content))))
 
 (defmethod view
     :default
@@ -101,31 +106,57 @@
 	:when (re-find re (str (:name (meta v))))]
     v))
 
-(defn var-names
+(defn var-apropos
   "returns vars in ns matching re in doc or name"
   ([]
      (vals (ns-interns *ns*)))
   ([var-sym-string-or-pattern & [ns]]
-     (let [code (fn [string-or-re ns]
-		  (list-var-names-from-name-or-doc
-		    (re-pattern string-or-re)
-		    (case ns
-			   :all (mapcat #(vals (ns-interns %)) (all-ns))
-			   :this (vals (ns-interns *ns*))
-			   (vals (ns-interns ns)))))
+     (let [make-str-re (fn [x]
+			 (if (symbol? x)
+			   (if-let [the-var (resolve x)]
+			     (str (:name (meta the-var)))
+			     (str x))
+			   (if (or (string? x)
+				   (= (class x) java.util.regex.Pattern))
+			     x
+			     (throw (Exception. "Type of first arg must be regex, string, or symbol")))))
 	   ns (if ns
 		(if (keyword? ns)
 		  ns
 		  (the-ns ns))
 		:this)]
-       (if (symbol? var-sym-string-or-pattern)
-	 (if-let [the-var (resolve var-sym-string-or-pattern)]
-	   (code (str (:name (meta the-var))) ns)
-	   (code (str var-sym-string-or-pattern) ns))
-	 (if (or (string? var-sym-string-or-pattern)
-		 (= (class var-sym-string-or-pattern) java.util.regex.Pattern))
-	   (code var-sym-string-or-pattern ns)
-	   (throw (Exception. "Type of first arg must be regex, string, or symbol")))))))
+       (list-var-names-from-name-or-doc
+	(re-pattern (make-str-re var-sym-string-or-pattern))
+	(case ns
+	      :all (mapcat #(vals (ns-interns %)) (all-ns))
+	      :this (vals (ns-interns *ns*))
+	      (vals (ns-interns ns)))))))
+
+(defn var-names
+  "returns vars in ns matching re in doc or name"
+  ([]
+     (vals (ns-interns *ns*)))
+  ([var-sym-string-or-pattern & [ns]]
+     (let [make-str-re (fn [x]
+			 (if (symbol? x)
+			   (if-let [the-var (resolve x)]
+			     (str (:name (meta the-var)))
+			     (str x))
+			   (if (or (string? x)
+				   (= (class x) java.util.regex.Pattern))
+			     x
+			     (throw (Exception. "Type of first arg must be regex, string, or symbol")))))
+	   ns (if ns
+		(if (keyword? ns)
+		  ns
+		  (the-ns ns))
+		:this)]
+       (list-var-names-from-name
+	(re-pattern (make-str-re var-sym-string-or-pattern))
+	(case ns
+	      :all (mapcat #(vals (ns-interns %)) (all-ns))
+	      :this (vals (ns-interns *ns*))
+	      (vals (ns-interns ns)))))))
 
 (defn var-docs
   "Prints documentation for any var whose documentation or name

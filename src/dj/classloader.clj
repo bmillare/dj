@@ -43,7 +43,7 @@
    body]
   `(let [cl# (dj.classloader/get-current-classloader)]
      (in-ns '~caller-ns)
-     (def ~'*classloader* cl#)
+     (def ~(with-meta '*classloader* {:dynamic true}) cl#)
      ;; Reset java.library.path by setting sys_paths variable in java.lang.ClassLoader to NULL, depends on java implementation knowledge
      (let [clazz# java.lang.ClassLoader
 	   field# (.getDeclaredField clazz# "sys_paths")] 
