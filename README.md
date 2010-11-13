@@ -21,7 +21,7 @@ native dependencies.
 
 1. git clone git://github.com/bmillare/dj.git
 2. cd dj; mkdir -p usr/src usr/bin etc sbin opt tmp/dj var lib
-3. cd opt; wget --no-check-certificate 'http://github.com/bmillare/dj/raw/master/bin/install.sh'
+3. cd opt; wget --no-check-certificate 'http://github.com/downloads/clojure/clojure/clojure-1.2.0.zip'
 4. unzip clojure-1.2.0.zip
 5. cd ../lib
 6. ln -s ../opt/clojure-1.2.0/clojure.jar clojure.jar

@@ -6,7 +6,7 @@ cd dj
 mkdir -p usr/src usr/bin etc sbin opt tmp/dj var lib
 echo "Installing clojure"
 cd opt
-wget http://github.com/downloads/clojure/clojure/clojure-1.2.0.zip
+wget --no-check-certificate 'http://github.com/downloads/clojure/clojure/clojure-1.2.0.zip'
 unzip clojure-1.2.0.zip
 cd ../lib
 ln -s ../opt/clojure-1.2.0/clojure.jar clojure.jar
