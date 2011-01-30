@@ -11,7 +11,7 @@
   functions that return true or false when given a dependency"))
 
 ;; problem: type information can potentially be unknown but it usually
-;; is. Still want flexbility of adding new dependency forms without
+;; isn't. Still want flexbility of adding new dependency forms without
 ;; messing with existing code input will usually be a vector with
 ;; certain components, not an object, making dispatching on type
 
