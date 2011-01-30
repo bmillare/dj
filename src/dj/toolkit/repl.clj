@@ -144,6 +144,11 @@
 			   (re-find re doc-data)))]
 	 (print-doc v)))))
 
+(defn unmap-ns [ns]
+  (doseq [s (filter (complement #{'unmap-ns})
+		    (map first (ns-interns ns)))]
+    (ns-unmap ns s)))
+
 (defmacro var-src
   "alias for clojure.repl/source"
   [arg]

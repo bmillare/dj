@@ -18,18 +18,37 @@
   "Behave like clojure.core/slurp but generically to any destination"
   (eat [dest] "obtain data from file"))
 
+(defprotocol Mkdir
+  "make a directory"
+  (mkdir [dest]))
+
 (defprotocol Call
   "Allow a task to be executed by the executor"
   (call [executor body]))
 
+(defprotocol RFuture
+  "return a future object to manage the executor"
+  (rfuture [executor body]))
+
 ;; Destination objects
+(extend-type java.io.File
+  Eat
+  (eat [this] (slurp this))
+  Poop
+  (poop [this txt] (spit this txt))
+  Mkdir
+  (mkdir [this] (.mkdir this)))
+
 (defrecord remote-file [path username server port]
   Poop
   (poop [dest txt]
 	(ssh username server port (str "cat - > " path) :in txt))
   Eat
   (eat [dest]
-       (:out (ssh username server port (shify ["cat" path])))))
+       (:out (ssh username server port (shify ["cat" path]))))
+  Mkdir
+  (mkdir [dest]
+	 (ssh username server port (str "mkdir -p " path))))
 
 (defn new-remote-file [path username server port]
   (remote-file. path username server port))
@@ -38,7 +57,10 @@
 (defrecord remote-pipe [txt username server port]
   Call
   (call [_ sh-code]
-	(ssh username server port sh-code :in txt)))
+	(ssh username server port sh-code :in txt))
+  RFuture
+  (rfuture [_ sh-code]
+	   (future [(ssh username server port sh-code :in txt)])))
 
 (defn new-remote-pipe [txt username server port]
   (remote-pipe. txt username server port))
@@ -46,7 +68,10 @@
 (defrecord remote-sh [username server port]
   Call
   (call [_ sh-code]
-	(ssh username server port sh-code)))
+	(ssh username server port sh-code))
+  RFuture
+  (rfuture [_ sh-code]
+	   (future (ssh username server port sh-code))))
 
 (defn new-remote-sh [sh-code username server port]
   (remote-sh. username server port))
