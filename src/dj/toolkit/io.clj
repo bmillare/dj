@@ -22,6 +22,10 @@
   "make a directory"
   (mkdir [dest]))
 
+(defprotocol Ls
+  "return list of files in that directory"
+  (ls [dest]))
+
 (defprotocol Call
   "Allow a task to be executed by the executor"
   (call [executor body]))
@@ -48,7 +52,12 @@
        (:out (ssh username server port (shify ["cat" path]))))
   Mkdir
   (mkdir [dest]
-	 (ssh username server port (str "mkdir -p " path))))
+	 (ssh username server port (str "mkdir -p " path)))
+  Ls
+  (ls [dest]
+      (map #(remote-file. (str path "/" %) username server port)
+	   (.split (:out (ssh username server port (shify ["ls" path])))
+		   "\n"))))
 
 (defn new-remote-file [path username server port]
   (remote-file. path username server port))
