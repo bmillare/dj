@@ -8,5 +8,5 @@
 
 (defn replace-map [s m]
   (clojure.string/replace s
-			  (re-pattern (apply str (interpose "|" (keys m))))
+			  (re-pattern (apply str (interpose "|" (map #(java.util.regex.Pattern/quote %) (keys m)))))
 			  m))
