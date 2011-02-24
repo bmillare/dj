@@ -2,12 +2,14 @@
   (:require [clojure.pprint])
   (:require [clojure.repl])
   (:require [clojure.java.javadoc])
-  (:require [clojure.java.shell :as sh]))
+  (:require [clojure.java.shell :as sh])
+  (:require [clojure.string]))
 
 (load "toolkit/core")
 (load "toolkit/code")
 (load "toolkit/repl")
 (load "toolkit/io")
+(load "toolkit/string")
 
 (defn classpaths
   []

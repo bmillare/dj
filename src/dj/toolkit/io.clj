@@ -34,6 +34,10 @@
   "return a future object to manage the executor"
   (rfuture [executor body]))
 
+(defprotocol Get-name
+  "for file like objects, get-name will return the last name in the name sequence of the path"
+  (get-name [f]))
+
 ;; Destination objects
 (extend-type java.io.File
   Eat
@@ -41,7 +45,18 @@
   Poop
   (poop [this txt] (spit this txt))
   Mkdir
-  (mkdir [this] (.mkdir this)))
+  (mkdir [this] (if (.mkdir this)
+		  this
+		  (throw (Exception. (str "Could not make directory " (.getCanonicalPath this))))))
+  Get-name
+  (get-name [f]
+	    (let [n (.getName f)]
+	      (if (empty? n)
+		nil
+		n)))
+  Ls
+  (ls [dest]
+      (seq (.listFiles dest))))
 
 (defrecord remote-file [path username server port]
   Poop
@@ -52,12 +67,19 @@
        (:out (ssh username server port (shify ["cat" path]))))
   Mkdir
   (mkdir [dest]
-	 (ssh username server port (str "mkdir -p " path)))
+	 (if (zero? (:exit (ssh username server port (str "mkdir -p " path))))
+	   dest
+	   (throw (Exception. (str "Could not make remote directory " path)))))
+  Get-name
+  (get-name [f]
+	    (last (.split (:path f) "/")))
   Ls
   (ls [dest]
       (map #(remote-file. (str path "/" %) username server port)
-	   (.split (:out (ssh username server port (shify ["ls" path])))
-		   "\n"))))
+	   (let [ls-str (:out (ssh username server port (shify ["ls" path])))]
+	     (if (empty? ls-str)
+	       nil
+	       (.split ls-str "\n"))))))
 
 (defn new-remote-file [path username server port]
   (remote-file. path username server port))
