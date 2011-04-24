@@ -43,10 +43,13 @@
       (dj.io/unjar (dj.io/file (dj.deps.maven/obtain-normal-maven dependency))
 		   install-dir))
     [(seq (.listFiles (dj.io/file install-dir "./lib/")))
-     (seq (.listFiles (dj.io/file install-dir
+     (let [native-dir (dj.io/file install-dir
 				  "./native/"
 				  (platforms (System/getProperty "os.name"))
-				  (architectures (System/getProperty "os.arch")))))]))
+				  (architectures (System/getProperty "os.arch")))]
+       #_ (concat [native-dir] (.listFiles native-dir))
+       ;; BUG: some programs want dir, others want the files, don't know how to customize resolving
+       (list native-dir))]))
 
 (extend native-dependency
   ADependency
