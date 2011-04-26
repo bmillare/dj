@@ -3,13 +3,18 @@
   (:require [clojure.repl])
   (:require [clojure.java.javadoc])
   (:require [clojure.java.shell :as sh])
-  (:require [clojure.string]))
+  (:require [clojure.string])
+  (:import [javax.swing JPanel JFrame JTextField JButton JLabel])
+  (:import [java.awt GridBagLayout GridBagConstraints Insets])
+  (:import [javax.swing.event DocumentListener])
+  (:import [javax.swing SwingUtilities]))
 
 (load "toolkit/core")
 (load "toolkit/code")
 (load "toolkit/repl")
 (load "toolkit/io")
 (load "toolkit/string")
+(load "toolkit/viewer")
 
 (defn classpaths
   []
