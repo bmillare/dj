@@ -14,8 +14,9 @@
     (.pack)
     (.setVisible true)))
 
+;; need to use print so that lazy sequences are realized
 (defn str-newline-seq [s]
-  (apply str (interpose "\n" (map str s))))
+  (apply str (interpose "\n" (map #(with-out-str (print %)) s))))
 
 (defn sequence-box [title s]
   (scroll-box title (str-newline-seq s) 70 10))
