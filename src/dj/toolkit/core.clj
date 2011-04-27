@@ -13,3 +13,11 @@
 					  (assoc! counts item 1)))
 				      (transient {})
 				      all)))))
+
+;; the doalls are necessary or else the maps are realized all at once at the end,
+;; I want them realized as we traverse the seq
+(defn min-max-by-columns [s]
+  (reduce (fn [[smallest largest] y]
+	    [(doall (map min smallest y)) (doall (map max largest y))])
+	  [(first s) (first s)]
+	  s))
