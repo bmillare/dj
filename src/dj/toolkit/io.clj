@@ -26,6 +26,10 @@
   "return list of files in that directory"
   (ls [dest]))
 
+(defprotocol Rm
+  "deletes path recursively"
+  (rm [target]))
+
 (defprotocol Call
   "Allow a task to be executed by the executor"
   (call [executor body]))
@@ -56,7 +60,13 @@
 		n)))
   Ls
   (ls [dest]
-      (seq (.listFiles dest))))
+      (seq (.listFiles dest)))
+  Rm
+  (rm [dest]
+      (when (.isDirectory dest)
+	(doseq [f (ls dest)]
+	  (rm f)))
+      (.delete dest)))
 
 (defrecord remote-file [path username server port]
   Poop
@@ -134,3 +144,8 @@
 (defmethod cp [remote-file remote-file] [in out]
   (throw (Exception. "not implemented")))
 
+(defn poop-form [^java.io.File file form]
+  (with-open [w (java.io.FileWriter. file)]
+    (binding [*out* w *print-dup* true]
+      (prn form)))
+  form)

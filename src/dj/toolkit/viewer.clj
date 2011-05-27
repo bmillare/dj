@@ -1,8 +1,13 @@
 (in-ns 'dj.toolkit)
 
-(defn text-box [title text]
+(defn text-box [title data]
   (doto (JFrame. title)
-    (.setContentPane (doto (javax.swing.JTextArea. text)
+    (.setContentPane (doto (javax.swing.JTextArea. (if (empty? data)
+						     "Empty data"
+						     (if (= java.lang.String
+							    (type data))
+						       (print-str data)
+						       (pr-str data))))
 		       (.setFont (java.awt.Font. "Courier" java.awt.Font/PLAIN 14))))
     (.pack)
     (.setVisible true)))
@@ -16,10 +21,10 @@
 
 ;; need to use print so that lazy sequences are realized
 (defn str-newline-seq [s]
-  (apply str (interpose "\n" (map #(with-out-str (print %)) s))))
+  (apply str (interpose "\n" (map #(with-out-str (pr %)) s))))
 
 (defn sequence-box [title s]
-  (scroll-box title (str-newline-seq s) 70 10))
+  (scroll-box title (str-newline-seq s) 70 (min (count s) 30)))
 
 #_ (do
      (in-ns 'dj.toolkit)

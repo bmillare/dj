@@ -242,7 +242,8 @@ snapshot"
 				   :groupId (recur (next c) (assoc name-version-group :group (first (:groupId x))))
 				   :artifactId (recur (next c) (assoc name-version-group :name (first (:artifactId x))))
 				   :version (recur (next c) (assoc name-version-group :version (first (:version x))))
-				   :scope nil))
+				   :scope nil
+				   :optional nil))
 			   name-version-group))]
 	  :when d-data]
       (make-maven-dependency (:name d-data) (:version d-data) (:group d-data)))))
