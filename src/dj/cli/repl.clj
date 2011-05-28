@@ -28,6 +28,6 @@
 	src-paths
 	jar-paths
 	native-paths
-	(clojure.main/main)))
+	'(clojure.main/main)))
     (clojure.main/main)))
 

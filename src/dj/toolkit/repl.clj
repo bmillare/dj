@@ -184,7 +184,7 @@
   [class-or-object]
   (clojure.java.javadoc/javadoc class-or-object))
 
-(defn classpaths
+#_ (defn classpaths
   []
   (dj.classloader/get-classpaths user/*classloader*))
 

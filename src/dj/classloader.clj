@@ -54,12 +54,12 @@
 	      (dj.classloader/add-to-classpath! cl# p#)))
      (doall (for [p# ~jar-paths]
 	      (dj.classloader/add-to-classpath! cl# p#)))
-     ~@body))
+     ~body))
 
 (defmacro with-new-classloader [src-paths
 				jar-paths
 				native-paths
-				& body]
+				body]
   "running in an eval implicitly creates a new classloader
    assume empty environment"
   (let [caller-ns (symbol (ns-name *ns*))]
@@ -68,4 +68,4 @@
 	     (vec ~src-paths)
 	     (vec ~jar-paths)
 	     (vec ~native-paths)
-	     '~body))))
+	     ~body))))
