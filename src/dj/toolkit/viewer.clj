@@ -24,7 +24,7 @@
   (apply str (interpose "\n" (map #(with-out-str (pr %)) s))))
 
 (defn sequence-box [title s]
-  (scroll-box title (str-newline-seq s) 70 (min (count s) 30)))
+  (scroll-box title (str-newline-seq s) 70 (min (count s) 70)))
 
 #_ (do
      (in-ns 'dj.toolkit)

@@ -97,6 +97,29 @@
 	      :this (vals (ns-interns *ns*))
 	      (vals (ns-interns ns)))))))
 
+(defn all-completions
+  "returns list of all possible symbol completions, ideally cache this and update only during saves"
+  [ns-arg]
+  (let [clojure-core-interns (map #(name %)
+				  (keys (ns-interns (the-ns 'clojure.core))))
+	all-ns-interns (map #(name %)
+			    (keys (ns-interns ns-arg)))
+	all-require-interns (mapcat (fn [a-ns]
+				      (map #(str (ns-name a-ns) "/" %)
+					   (keys (ns-interns a-ns))))
+				    (all-ns))
+	all-alias-interns (let [a-ns-name (ns-name ns-arg)
+				aliases (ns-aliases a-ns-name)]
+			    (mapcat (fn [a-ns-alias]
+				      (map #(str a-ns-alias "/" %)
+					   (keys (ns-interns (aliases a-ns-alias)))))
+				    (keys aliases)))]
+    
+    (concat clojure-core-interns
+            all-ns-interns
+	    all-require-interns
+	    all-alias-interns)))
+
 (defn var-names
   "returns vars in ns matching re in doc or name"
   ([]
@@ -152,15 +175,15 @@
      (map #(with-out-str (print-doc (meta %))) (vals (ns-interns *ns*))))
   ([re-string-or-pattern & [ns]]
      (let [re (re-pattern re-string-or-pattern)]
-       (doseq [ns (case ns
-			:all (all-ns)
-			:this [*ns*]
-			[(the-ns (or ns *ns*))])
-	       v (sort-by (comp :name meta) (vals (ns-interns ns)))
-	       :when (or (re-find re (str (:name (meta v))))
-			 (when-let [doc-data (:doc (meta v))]
-			   (re-find re doc-data)))]
-	 (with-out-str (print-doc (meta v)))))))
+       (for [ns (case ns
+		      :all (all-ns)
+		      :this [*ns*]
+		      [(the-ns (or ns *ns*))])
+	     v (sort-by (comp :name meta) (vals (ns-interns ns)))
+	     :when (or (re-find re (str (:name (meta v))))
+		       (when-let [doc-data (:doc (meta v))]
+			 (re-find re doc-data)))]
+	    (with-out-str (print-doc (meta v)))))))
 
 (defn unmap-ns
   "unmap everything from a ns"

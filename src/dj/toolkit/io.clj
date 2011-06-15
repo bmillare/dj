@@ -10,6 +10,16 @@
 	 (str "'" sh-code "'")
 	 args))
 
+(defn str-path
+  "joins paths defined in strings together (unix)"
+  [parent & children]
+  (apply str (if (= (first parent)
+		    \/)
+	       "/"
+	       "")
+	 (interpose "/" (filter #(not (empty? %)) (concat (.split parent "/")
+							  children)))))
+
 (defprotocol Poop
   "Behave like clojure.core/spit but generically to any destination"
   (poop [dest txt] "send data to file"))
@@ -68,6 +78,16 @@
 	  (rm f)))
       (.delete dest)))
 
+(defn new-file
+  "returns a new java.io.File with args as files or str-paths"
+  [& paths]
+  (java.io.File. (apply str-path (map (fn [p]
+					(if (= (type p)
+					       java.io.File)
+					  (.getPath p)
+					  p))
+				      paths))))
+
 (defrecord remote-file [path username server port]
   Poop
   (poop [dest txt]
@@ -89,7 +109,9 @@
 	   (let [ls-str (:out (ssh username server port (shify ["ls" path])))]
 	     (if (empty? ls-str)
 	       nil
-	       (.split ls-str "\n"))))))
+	       (.split ls-str "\n")))))
+  Rm
+  (rm [target] (ssh username server port (shify ["rm" "-rf" path]))))
 
 (defn new-remote-file [path username server port]
   (remote-file. path username server port))
