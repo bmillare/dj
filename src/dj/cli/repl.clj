@@ -15,11 +15,9 @@
    projects sources and jar dependencies"
   [& args]
   (if-let [project-name (first args)]
-    (let [args (for [a (next args)]
-		 (if (= a "false")
-		   false
-		   (keyword a)))
-	  default-options {:verbose true}
+    (let [args (map read-string (next args))
+	  default-options {:verbose true
+			   :offline true}
 	  options (if (empty? args)
 		    default-options
 		    (apply assoc default-options args))

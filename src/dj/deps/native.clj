@@ -53,7 +53,7 @@
 
 (extend native-dependency
   ADependency
-  {:obtain (fn [dependency {:keys [offline?]}]
+  {:obtain (fn [dependency {:keys [offline]}]
 	     (if (dj.deps.maven/is-snapshot? dependency)
 	       (throw (java.lang.Exception. "snapshot native dependencies not implemented"))
 	       (get-native! dependency)))

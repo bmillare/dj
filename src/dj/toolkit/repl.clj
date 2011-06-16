@@ -100,10 +100,7 @@
 (defn all-completions
   "returns list of all possible symbol completions, ideally cache this and update only during saves"
   [ns-arg]
-  (let [clojure-core-interns (map #(name %)
-				  (keys (ns-interns (the-ns 'clojure.core))))
-	all-ns-interns (map #(name %)
-			    (keys (ns-interns ns-arg)))
+  (let [all-use-mappings (map str (keys (ns-map ns-arg)))
 	all-require-interns (mapcat (fn [a-ns]
 				      (map #(str (ns-name a-ns) "/" %)
 					   (keys (ns-interns a-ns))))
@@ -115,8 +112,7 @@
 					   (keys (ns-interns (aliases a-ns-alias)))))
 				    (keys aliases)))]
     
-    (concat clojure-core-interns
-            all-ns-interns
+    (concat all-use-mappings
 	    all-require-interns
 	    all-alias-interns)))
 
@@ -259,3 +255,41 @@
     (map
      (fn [[cpu t]] [cpu (.getName t) (.getId t) t])
      (reverse (sort-by first cpu-times)))))
+
+(defn new-future-index
+  "return a new future index, use helper functions as interface [run, count-running, get-future, ls-futures]"
+  [log-file]
+  (atom {:latest-id 0
+	 :futures-map {}
+	 :log-file log-file}))
+
+(defn run-helper [a f s]
+  (swap! a (fn [idx]
+	     (let [{:keys [latest-id futures-map log-file]} idx
+		   latest-id (inc latest-id)]
+	       {:latest-id latest-id
+		:futures-map (assoc futures-map latest-id {:doc s
+							   :future f})
+		:log-file log-file})))
+  (poop (:log-file @a) (str s "\n") :append)
+  a)
+
+(defmacro run
+  "log to atom and run body code in a future"
+  [atom-m & body]
+  `(let [future# (future ~@body)
+	 str-code# (pr-str '~body)]
+     (run-helper ~atom-m future# str-code#)))
+
+(defn count-running
+  "returns the number of running futures"
+  [future-index]
+  (count (filter #(not (future-done? (:future %)))
+		 (vals (:futures-map @future-index)))))
+
+(defn get-future [future-index n]
+  @(:future ((:futures-map @future-index) n)))
+
+(defn ls-futures [future-index]
+  (update-all-in (:futures-map @future-index)
+		 :doc))

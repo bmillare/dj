@@ -10,8 +10,8 @@
   (:import [javax.swing SwingUtilities]))
 
 (load "toolkit/core")
-(load "toolkit/repl")
 (load "toolkit/io")
+(load "toolkit/repl")
 (load "toolkit/string")
 (load "toolkit/viewer")
 (load "toolkit/gui")

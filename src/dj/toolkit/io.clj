@@ -22,7 +22,7 @@
 
 (defprotocol Poop
   "Behave like clojure.core/spit but generically to any destination"
-  (poop [dest txt] "send data to file"))
+  (poop [dest txt] [dest txt append] "send data to file"))
 
 (defprotocol Eat
   "Behave like clojure.core/slurp but generically to any destination"
@@ -57,7 +57,12 @@
   Eat
   (eat [this] (slurp this))
   Poop
-  (poop [this txt] (spit this txt))
+  (poop ([this txt append]
+	   (if append
+	     (sh/sh "sh" "-c" (str "cat - >> " (.getPath this)) :in txt)
+	     (spit this txt)))
+	([this txt]
+	   (spit this txt)))
   Mkdir
   (mkdir [this] (if (.mkdir this)
 		  this
@@ -90,6 +95,10 @@
 
 (defrecord remote-file [path username server port]
   Poop
+  (poop [dest txt append]
+	(if append
+	  (ssh username server port (str "cat - >> " path) :in txt)
+	  (ssh username server port (str "cat - > " path) :in txt)))
   (poop [dest txt]
 	(ssh username server port (str "cat - > " path) :in txt))
   Eat
@@ -165,9 +174,3 @@
 
 (defmethod cp [remote-file remote-file] [in out]
   (throw (Exception. "not implemented")))
-
-(defn poop-form [^java.io.File file form]
-  (with-open [w (java.io.FileWriter. file)]
-    (binding [*out* w *print-dup* true]
-      (prn form)))
-  form)

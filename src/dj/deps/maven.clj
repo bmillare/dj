@@ -145,62 +145,62 @@ snapshot"
       (dj.io/file repositories-directory "maven" (str let-relative-directory (:name d) "-" (:version d) ".pom")))))
 
 (defn obtain-snapshot-maven
-  [dependency offline?]
-  (let [let-relative-directory (relative-directory dependency)
-	local-maven-metadata-file (dj.io/file repositories-directory "maven" (str let-relative-directory "maven-metadata.xml"))]
-    (if offline?
-	(if (.exists local-maven-metadata-file)
-	  ;; return local jar file based on the xml file
-	  (dj.io/file repositories-directory
-		      "maven"
-		      let-relative-directory
-		      (str (latest-prefix (condense-xml (clojure.xml/parse local-maven-metadata-file)))
-			   ".jar"))
-	  (throw (java.io.FileNotFoundException. (str "Can't find "
-						      local-maven-metadata-file
-						      ".pom from local repository"))))
-	;; obtain and (return xml-snapshot or return regular-snapshot)
-	(loop [urls repository-urls]
-	  (if urls
-	    (let [remote-directory (str (first urls) let-relative-directory)]
-	      (if (dj.net/exists? remote-directory)
-		(let [remote-xml-file (str remote-directory "maven-metadata.xml")]
-		  (if (dj.net/exists? remote-xml-file)
-		    (dj.io/with-tmp-directory tmp-folder (dj.io/file dj.core/system-root "tmp/repository")
-		      (let [downloaded-xml (dj.net/wget! remote-xml-file tmp-folder)
-			    file-prefix (latest-prefix (condense-xml (clojure.xml/parse (dj.io/file tmp-folder "maven-metadata.xml"))))
-			    downloaded-pom (dj.net/wget! (str remote-directory file-prefix ".pom") tmp-folder)
-			    downloaded-jar (dj.net/wget! (str remote-directory file-prefix ".jar") tmp-folder)
-			    local-jar (dj.io/file repositories-directory "maven" (str let-relative-directory file-prefix ".jar"))
-			    local-xml (dj.io/file repositories-directory "maven" (str let-relative-directory "maven-metadata" ".xml"))
-			    local-pom (dj.io/file repositories-directory "maven" (str let-relative-directory file-prefix ".pom"))]
-			;; side effects, order important
-			(dj.io/make-directory! (.getParentFile local-pom))
-			;; move files to local repository
-			(.renameTo downloaded-jar local-jar)
-			(.renameTo downloaded-pom local-pom)
-			(.renameTo downloaded-xml local-xml)
-			local-jar))
-		    (dj.io/with-tmp-directory tmp-folder (dj.io/file dj.core/system-root "tmp/repository")
-		      (let [file-prefix (str (:name dependency) "-" (:version dependency))
-			    downloaded-pom (dj.net/wget! (str remote-directory file-prefix ".pom") tmp-folder)
-			    downloaded-jar (dj.net/wget! (str remote-directory file-prefix ".jar") tmp-folder)
-			    local-jar (dj.io/file repositories-directory "maven" (str let-relative-directory file-prefix ".jar"))
-			    local-pom (dj.io/file repositories-directory "maven" (str let-relative-directory file-prefix ".pom"))]
-			;; side effects, order important
-			(dj.io/make-directory! (.getParentFile local-pom))
-			;; move files to local repository
-			(.renameTo downloaded-jar local-jar)
-			(.renameTo downloaded-pom local-pom)
-			local-jar))))
-		(recur (next urls))))
-	    (throw (java.io.FileNotFoundException. (str "Can't find "
-							(relative-directory dependency) (:name dependency) "-" (:version dependency) ".pom"
-							" from any remote repository"))))))))
-
-"downloads files for a single dependency if not in local repository,
+  "downloads files for a single dependency if not in local repository,
  returns file path snapshots always get a fresh copy unless in offline
  mode"
+  [dependency offline]
+  (let [let-relative-directory (relative-directory dependency)
+	local-maven-metadata-file (dj.io/file repositories-directory "maven" (str let-relative-directory "maven-metadata.xml"))]
+    (if offline
+      (if (.exists local-maven-metadata-file)
+	;; return local jar file based on the xml file
+	(dj.io/file repositories-directory
+		    "maven"
+		    let-relative-directory
+		    (str (latest-prefix (condense-xml (clojure.xml/parse local-maven-metadata-file)))
+			 ".jar"))
+	(do (println (str "Can't find "
+			  local-maven-metadata-file
+			  ".pom from local repository, searching in remote"))
+	    (obtain-snapshot-maven dependency nil)))
+      ;; obtain and (return xml-snapshot or return regular-snapshot)
+      (loop [urls repository-urls]
+	(if urls
+	  (let [remote-directory (str (first urls) let-relative-directory)]
+	    (if (dj.net/exists? remote-directory)
+	      (let [remote-xml-file (str remote-directory "maven-metadata.xml")]
+		(if (dj.net/exists? remote-xml-file)
+		  (dj.io/with-tmp-directory tmp-folder (dj.io/file dj.core/system-root "tmp/repository")
+		    (let [downloaded-xml (dj.net/wget! remote-xml-file tmp-folder)
+			  file-prefix (latest-prefix (condense-xml (clojure.xml/parse (dj.io/file tmp-folder "maven-metadata.xml"))))
+			  downloaded-pom (dj.net/wget! (str remote-directory file-prefix ".pom") tmp-folder)
+			  downloaded-jar (dj.net/wget! (str remote-directory file-prefix ".jar") tmp-folder)
+			  local-jar (dj.io/file repositories-directory "maven" (str let-relative-directory file-prefix ".jar"))
+			  local-xml (dj.io/file repositories-directory "maven" (str let-relative-directory "maven-metadata" ".xml"))
+			  local-pom (dj.io/file repositories-directory "maven" (str let-relative-directory file-prefix ".pom"))]
+		      ;; side effects, order important
+		      (dj.io/make-directory! (.getParentFile local-pom))
+		      ;; move files to local repository
+		      (.renameTo downloaded-jar local-jar)
+		      (.renameTo downloaded-pom local-pom)
+		      (.renameTo downloaded-xml local-xml)
+		      local-jar))
+		  (dj.io/with-tmp-directory tmp-folder (dj.io/file dj.core/system-root "tmp/repository")
+		    (let [file-prefix (str (:name dependency) "-" (:version dependency))
+			  downloaded-pom (dj.net/wget! (str remote-directory file-prefix ".pom") tmp-folder)
+			  downloaded-jar (dj.net/wget! (str remote-directory file-prefix ".jar") tmp-folder)
+			  local-jar (dj.io/file repositories-directory "maven" (str let-relative-directory file-prefix ".jar"))
+			  local-pom (dj.io/file repositories-directory "maven" (str let-relative-directory file-prefix ".pom"))]
+		      ;; side effects, order important
+		      (dj.io/make-directory! (.getParentFile local-pom))
+		      ;; move files to local repository
+		      (.renameTo downloaded-jar local-jar)
+		      (.renameTo downloaded-pom local-pom)
+		      local-jar))))
+	      (recur (next urls))))
+	  (throw (java.io.FileNotFoundException. (str "Can't find "
+						      (relative-directory dependency) (:name dependency) "-" (:version dependency) ".pom"
+						      " from any remote repository"))))))))
 
 (defn maven-exclusions [d]
   (let [pom-cache (:pom-cache d)
@@ -250,9 +250,9 @@ snapshot"
 
 (extend maven-dependency
   ADependency
-  {:obtain (fn [dependency {:keys [offline?]}]
+  {:obtain (fn [dependency {:keys [offline]}]
 	     (if (is-snapshot? dependency)
-	       (obtain-snapshot-maven dependency offline?)
+	       (obtain-snapshot-maven dependency offline)
 	       (obtain-normal-maven dependency)))
    :depends-on maven-depends-on
    :load-type (fn [d] :jar)

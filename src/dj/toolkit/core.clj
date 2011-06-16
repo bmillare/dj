@@ -21,3 +21,12 @@
 	    [(doall (map min smallest y)) (doall (map max largest y))])
 	  [(first s) (first s)]
 	  s))
+
+(defn update-all-in
+  "returns map of application of fn f to all values in map m"
+  [m f]
+  (reduce #(update-in %1
+		      [%2]
+		      f)
+	  m
+	  (keys m)))
