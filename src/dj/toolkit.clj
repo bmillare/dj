@@ -1,4 +1,5 @@
 (ns dj.toolkit
+  (:refer-clojure :exclude [print-doc])
   (:require [clojure.pprint])
   (:require [clojure.repl])
   (:require [clojure.java.javadoc])
