@@ -48,6 +48,10 @@
   "return a future object to manage the executor"
   (rfuture [executor body]))
 
+(defprotocol ISubmit
+  "submit abstract function to executor, return status"
+  (submit [executor afn]))
+
 (defprotocol Get-name
   "for file like objects, get-name will return the last name in the name sequence of the path"
   (get-name [f]))
