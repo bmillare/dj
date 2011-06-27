@@ -17,23 +17,6 @@ native dependencies.
 1. Download wget --no-check-certificate 'http://github.com/bmillare/dj/raw/master/bin/install.sh'
 2. Put somewhere in path, 'chmod +x install.sh' to make executable and run
 
-## Manual Install
-
-1. git clone git://github.com/bmillare/dj.git
-2. cd dj; mkdir -p usr/src usr/bin etc sbin opt tmp/dj var lib
-3. cd opt; wget --no-check-certificate 'http://github.com/downloads/clojure/clojure/clojure-1.2.0.zip'
-4. unzip clojure-1.2.0.zip
-5. cd ../lib
-6. ln -s ../opt/clojure-1.2.0/clojure.jar clojure.jar
-7. symlink dj/bin/run-dj-tool.sh to your path
-   cd ~/; ln -s dj/bin/run-dj-tool.sh dj
-
-The script assumes you have *nix environment with java, wget, unzip
-and git installed.
-
-If you are inclined, you can work through the TUTORIAL to get a feel
-for how to install dj with your own version of clojure.
-
 # Feature list
 
 * Practically no dependencies, only needs clojure and java.
@@ -55,17 +38,6 @@ for how to install dj with your own version of clojure.
   leiningen and cake do
 
 * Easy to extend adding new dependency types or new tasks
-
-# Short Term Todo
-
-* dj repl [maven dependency form]
-
-# Long Term Todo
-
-* git versioning, git dependencies
-* bootstrap everything (including java, gcc?) on any computer?
-
-======================================================================
 
 # Old Notes
 
@@ -228,3 +200,5 @@ the src/dj/cli folder.
 
 Brent Millare
 brent.millare@gmail.com
+
+Distributed under the Eclipse Public License, the same as Clojure.
