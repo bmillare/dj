@@ -202,13 +202,8 @@ snapshot"
 						      (relative-directory dependency) (:name dependency) "-" (:version dependency) ".pom"
 						      " from any remote repository"))))))))
 
-(defn maven-exclusions [d]
-  (let [pom-cache (:pom-cache d)
-	project-data (:project (if @pom-cache
-				 @pom-cache
-				 (reset! pom-cache (-> (pom-file d)
-						       clojure.xml/parse
-						       condense-xml))))]
+(defn pom-extract-exclusions [data]
+  (let [project-data (:project data)]
     (seq (concat (for [{dependency :dependency} (find-map-entry project-data :dependencies)
 		       :let [y (seq (concat (for [{e :exclusion} (find-map-entry dependency :exclusions)
 						  :let [x (let [e-data (loop [c e
@@ -226,13 +221,8 @@ snapshot"
 		       :when y]
 		   y)))))
 
-(defn maven-depends-on [d]
-  (let [pom-cache (:pom-cache d)
-	project-data (:project (if @pom-cache
-				 @pom-cache
-				 (reset! pom-cache (-> (pom-file d)
-						       clojure.xml/parse
-						       condense-xml))))]
+(defn pom-extract-dependencies [data]
+  (let [project-data (:project data)]
     (for [{d :dependency} (find-map-entry project-data :dependencies)
 	  :let [d-data (loop [c d
 			      name-version-group {}]
@@ -248,15 +238,25 @@ snapshot"
 	  :when d-data]
       (make-maven-dependency (:name d-data) (:version d-data) (:group d-data)))))
 
+(defn pass-pom-data
+  "grabs from cache if possible"
+  [d f]
+  (let [pom-cache (:pom-cache d)
+	pom-data (or @pom-cache
+		     (reset! pom-cache (-> (pom-file d)
+					   clojure.xml/parse
+					   condense-xml)))]
+    (f pom-data)))
+
 (extend maven-dependency
   ADependency
   {:obtain (fn [dependency {:keys [offline]}]
 	     (if (is-snapshot? dependency)
 	       (obtain-snapshot-maven dependency offline)
 	       (obtain-normal-maven dependency)))
-   :depends-on maven-depends-on
+   :depends-on #(pass-pom-data % pom-extract-dependencies)
    :load-type (fn [d] :jar)
-   :exclusions maven-exclusions})
+   :exclusions #(pass-pom-data % pom-extract-exclusions)})
 
 ;; TODO
 ;; write obtain

@@ -15,19 +15,6 @@
      (catch java.io.FileNotFoundException e
        error-fn))))
 
-(defn read-project
-  "in directory, looks for file project.clj and returns the result of
-  running that file in the context of the dj.cli namespace"
-  [#^File directory]
-  (let [old-ns (ns-name *ns*)]
-    (in-ns 'dj.core)
-    (let [p (load-file (.getCanonicalPath (File. directory "project.clj")))]
-      (in-ns old-ns)
-      p)))
-
-(defn project-name-to-file [project-name]
-  (File. system-root (str "usr/src/" project-name)))
-
 (defn main [& [task & args]]
   (let [task (or task "help")]
     (apply (resolve-task task) args)))

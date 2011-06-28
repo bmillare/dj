@@ -57,7 +57,7 @@
 	     (if (dj.deps.maven/is-snapshot? dependency)
 	       (throw (java.lang.Exception. "snapshot native dependencies not implemented"))
 	       (get-native! dependency)))
-   :depends-on dj.deps.maven/maven-depends-on
+   :depends-on #(dj.deps.maven/pass-pom-data % dj.deps.maven/pom-extract-dependencies)
    :load-type (fn [d] :native)
-   :exclusions dj.deps.maven/maven-exclusions})
+   :exclusions #(dj.deps.maven/pass-pom-data % dj.deps.maven/pom-extract-exclusions)})
 

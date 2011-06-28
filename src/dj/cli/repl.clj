@@ -21,7 +21,7 @@
 	  options (if (empty? args)
 		    default-options
 		    (apply assoc default-options args))
-	  [src-paths jar-paths native-paths] (dj.deps/obtain-dependencies! [(dj.deps.project.project-dependency. project-name)] options)]
+	  [src-paths jar-paths native-paths] (dj.deps/obtain-dependencies! [(dj.deps.core/parse project-name :project-dependency)] options)]
       (dj.classloader/with-new-classloader
 	src-paths
 	jar-paths
