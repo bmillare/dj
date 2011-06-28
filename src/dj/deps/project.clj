@@ -1,10 +1,8 @@
 (ns dj.deps.project
-  (:require [dj.io])
-  (:require [dj.cli])
   (:require [dj.deps.native])
   (:require [dj.deps.maven])
   (:use [dj.toolkit :only [new-file str-path]])
-  (:use [dj.deps.core])
+  (:use [dj.deps.core :only [ADependency parse]])
   (:use [clojure.java.shell :only [sh]])
   (:use [dj.core :only [system-root]]))
 

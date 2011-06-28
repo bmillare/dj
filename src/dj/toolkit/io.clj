@@ -177,4 +177,18 @@
 	     (sh/sh "scp" "-r" "-P" (str port) in (str username "@" server ":" path))))
 
 (defmethod cp [remote-file remote-file] [in out]
-  (throw (Exception. "not implemented")))
+	   (throw (Exception. "not implemented")))
+
+(defn unjar [^java.io.File jar-file install-dir]
+  (let [jar-file (java.util.jar.JarFile. jar-file)]
+    (for [entry (enumeration-seq (.entries jar-file))
+	  :let [f (new-file install-dir (.getName entry))]]
+      (if (.isDirectory entry)
+	(.mkdirs f)
+	(with-open [in-stream (.getInputStream jar-file entry)
+		    out-stream (java.io.FileOutputStream. f)]
+	  (loop []
+	    (when (> (.available in-stream)
+		     0)
+	      (.write out-stream (.read in-stream))
+	      (recur))))))))

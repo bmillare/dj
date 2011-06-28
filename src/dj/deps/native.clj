@@ -1,9 +1,9 @@
 (ns dj.deps.native
-  (:require [dj.io])
   (:require [dj.cli])
   (:require [dj.deps.maven])
   (:use [dj.deps.core])
-  (:use [dj.core :only [system-root]]))
+  (:use [dj.core :only [system-root]])
+  (:use [dj.toolkit :only [new-file ls unjar]]))
 
 (defrecord native-dependency [name version group pom-cache])
 
@@ -35,19 +35,19 @@
 		       "i386" "x86"
 		       "arm" "arm"
 		       "sparc" "sparc"}
-	install-dir (dj.io/file system-root
-			       "./usr/native/"
-			       (str (dj.deps.maven/relative-directory dependency)
-				    (:name dependency) "-" (:version dependency)))]
+	install-dir (new-file system-root
+			      "usr/native"
+			      (str (dj.deps.maven/relative-directory dependency)
+				   (:name dependency) "-" (:version dependency)))]
     (when-not (.exists install-dir)
-      (dj.io/unjar (dj.io/file (dj.deps.maven/obtain-normal-maven dependency))
+      (unjar (new-file (dj.deps.maven/obtain-normal-maven dependency))
 		   install-dir))
-    [(seq (.listFiles (dj.io/file install-dir "./lib/")))
-     (let [native-dir (dj.io/file install-dir
-				  "./native/"
-				  (platforms (System/getProperty "os.name"))
-				  (architectures (System/getProperty "os.arch")))]
-       #_ (concat [native-dir] (.listFiles native-dir))
+    [(seq (ls (new-file install-dir "lib")))
+     (let [native-dir (new-file install-dir
+				"native"
+				(platforms (System/getProperty "os.name"))
+				(architectures (System/getProperty "os.arch")))]
+       #_ (concat [native-dir] (ls native-dir))
        ;; BUG: some programs want dir, others want the files, don't know how to customize resolving
        (list native-dir))]))
 

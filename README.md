@@ -12,10 +12,9 @@ native dependencies.
 
 # Quick Start
 
-## Standalone script
-
 1. Download wget --no-check-certificate 'http://github.com/bmillare/dj/raw/master/bin/install.sh'
 2. Put somewhere in path, 'chmod +x install.sh' to make executable and run
+3. Symlink the executable dj/bin/run-dj-tool.sh to your path
 
 # Feature list
 
@@ -23,6 +22,8 @@ native dependencies.
 
 * Supports source dependencies, you can have your project depend on
   other projects you are developing.
+
+* Supports clojure contrib git cloning as source dependencies
 
 * Everything is installed locally to a directory, no messing up
   existing configuration files and repositories. If you want, you can
@@ -39,13 +40,7 @@ native dependencies.
 
 * Easy to extend adding new dependency types or new tasks
 
-# Old Notes
-
-dj leverages the advantages of having a standard
-directory layout for configuration files, jar files, and project
-directories by supply tools to integrate them all together.
-
-# Informal Specifications
+# Design
 
 There should be support for managing dependencies for projects at the
 system level. Tools should allow dependencies to be searched,
@@ -96,15 +91,15 @@ interface. Startup time would decrease dramatically but would require
 a lot more work to setup. Nailgun comes to mind however having it
 cooperate with clojure may prove difficult.
 
+What seems to be the most significant factor in this case, however, is
+the inability to dynamically change the native dependencies during
+runtime without affecting multiple clojure instances. There is a lack
+of scoping native dependencies at the jvm level.
+
 # File Directory Structure
 
 * The design of the directory hierarchy is based of the design of linux's
  specifically, gentoo's
-* combined with chroot, every time you create a directory with these
- subdirectories, you create a new system, thus you can have many
- clojure systems on one computer
-* the only way to run concurrently different systems is (under unix)
- to create new bash environments each time
 
 bin/
  -dj binaries and scripts to manage system
@@ -147,46 +142,6 @@ tmp/repository
 var/
  -logs, crash reports
 
-# Script descriptions
-
-setup-directories.sh
-* create directories
-boostrap-system-deps.sh
-* download install java
-* download, build, install git
-* not normal way, not necessary if you can bootstrap system deps from
- the host distribution/OS
-
-# dj concepts
-
-system
-* a checkout/snapshot of the dj project with its dependencies
- fulfilled
-
-live dependency
-* a dependency on the current state (live) of some project's directory
-* should just be a path
-* to deal with directory name collisions, append directory with a slot,
- which is just a counter, e.g. leiningen-1, leinigen-2
-* dj should be able to wrap generating folder names for you, dj will
- just increment the largest value, names are arbitrary, and a name
- without a counter is considered the 0 directory
-* the code you work on in a typical leiningen project is considered
- live dependencies, which have the property that if you change the
- files, reloading the file should change the definition
-
-checkout dependency
-* a dependency on project directory with a particular commit
-* dj should automatically download project and switch to version/commit
-
-# dj ideas for cli
-
-* update, updates system dependencies
-* dj swank, launch a swank server
-* dj jar, make a jar of project
-* dj install, install in local repository
-* dj upload, install in remote repository
-
 # adding tasks
 
 To implement additional tasks, define a file with the same name as the
@@ -200,5 +155,7 @@ the src/dj/cli folder.
 
 Brent Millare
 brent.millare@gmail.com
+
+# License
 
 Distributed under the Eclipse Public License, the same as Clojure.
