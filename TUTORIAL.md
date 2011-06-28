@@ -1,60 +1,22 @@
-Documentation for getting started. Subject to change as ideas are discussed and implemented.
+Examples of usage:
 
-See README for further information.
+# Installation
 
-Note: Install scripts can make this process much smoother, but I
-believed that a walkthrough would help the user get a better feel for
-how the system is designed so the user can help improve its design
-
-Assumes java, git, and ant are installed on a *nix machine
-
---Installation--
-
-Download using git:
-
-$ cd ~
-$ git clone git://github.com/bmillare/dj.git
-
-Create skeleton directories:
-
-$ cd dj
-$ mkdir -p usr/src usr/bin etc sbin opt tmp/dj var lib
-
-Add to path:
-
-Assuming ~/bin/ is in your path... (check .bashrc)
-
+$ wget 'https://github.com/bmillare/dj/blob/master/bin/install.sh'
+$ chmod +x install.sh
+$ ./install.sh
 $ cd ~/bin
 $ ln -s ~/dj/bin/run-dj-tool.sh dj
 
-Optional:
-
-If you prefer, create symlink wherever you prefer, such as /usr/local/bin.
-
-Also, I've included a rlwrap'd version of run-dj-tool.sh, so if rlwrap
+Note: Also, I've included a rlwrap'd version of run-dj-tool.sh, so if rlwrap
 is installed on your system, link to ~/dj/bin/run-dj-tool-rlwrap.sh
 instead.
 
-Install clojure:
-
-Assumes ant is installed
-
-$ cd ~/dj/opt
-$ git clone http://github.com/richhickey/clojure.git
-$ cd clojure
-$ ant
-$ cd ~/dj/lib
-$ ln -s ../opt/clojure/clojure-1.2.0-master-SNAPSHOT.jar
-
-Optional:
-
-If you are using rlwrap, generate the completions.
+Optional: If you are using rlwrap, generate the completions.
 
 $ dj rlwrap make-completions
 
---Basic Usage--
-
-Note:
+# Basic Usage
 
 For help,
 
@@ -66,7 +28,7 @@ $ dj help foo-command
 
 Lets make a hello world like project using dj:
 
-$ dj skeleton hw
+$ dj new hw
 
 Notice that a directory named hello-world was created in ~/dj/usr/src/
 
@@ -76,18 +38,18 @@ user
 $ ls ~/dj/usr/src/hw
 project.clj src
 
-Edit the project.clj file to depend on clojure-contrib
+Edit the project.clj file to depend on a clojure contrib project on github
 
 project.clj:
-(defproject hw "1.0.0" :dependencies [[org.clojure/clojure-contrib "1.2.0-SNAPSHOT"]])
+(defproject hw "1.0.0" :src-dependencies ["clojure/core.logic"])
 
 In the src/hw/ directory, create a clj file:
 
 src/hw/core.clj:
-(ns hw.core (:require [clojure.contrib.math]))
+(ns hw.core (:use [clojure.core.logic.minikanren]))
 
 (defn hello-world [] (print "hello world"))
-(defn math-test [] (clojure.contrib.math/expt 2 8))
+(defrel man x)
 
 We can create a repl at anytime using:
 
@@ -103,8 +65,6 @@ user=> (require 'hw.core)
 nil
 user=> (hw.core/hello-world)
 hello worldnil
-user=> (hw.core/math-test)
-256
 
 If you check ~/dj/usr/
 
@@ -126,7 +86,8 @@ $ dj repl hw
 
 again, dj manages finding the project and setting the classpath for
 you, similar to the way a *nix environment would know how to run the
-java command for you.
+java command for you. Note, dj/usr/src/clojure/* are for contrib
+projects
 
 You can organize dj/usr/src/ as a repository with subdirectories. To
 run a project, give the path relative to the dj/usr/src directory.
@@ -141,7 +102,7 @@ we would start the hw project repl using
 
 $ dj repl org/hw
 
---Developing with emacs, inferior-lisp--
+# Developing with emacs, inferior-lisp
 in the .emacs file, add:
 
 (setq inferior-lisp-program "~/dj/bin/run-dj-tool.sh repl")
