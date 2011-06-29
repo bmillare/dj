@@ -6,7 +6,7 @@ cd dj
 mkdir -p usr/src/clojure usr/bin etc sbin opt tmp/dj tmp/repository var lib
 echo "Installing clojure"
 cd opt
-wget --no-check-certificate 'http://repo1.maven.org/maven2/org/clojure/clojure/1.3.0-beta1/clojure-1.3.0-beta1.zip'
+wget -U firefox 'http://repo1.maven.org/maven2/org/clojure/clojure/1.3.0-beta1/clojure-1.3.0-beta1.zip'
 unzip clojure-1.3.0-beta1.zip
 rm clojure-1.3.0-beta1.zip
 cd ../lib
