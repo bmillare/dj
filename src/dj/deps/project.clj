@@ -1,7 +1,7 @@
 (ns dj.deps.project
   (:require [dj.deps.native])
   (:require [dj.deps.maven])
-  (:use [dj.toolkit :only [new-file str-path]])
+  (:use [dj.toolkit :only [new-file str-path mkdir]])
   (:use [dj.deps.core :only [ADependency parse]])
   (:use [clojure.java.shell :only [sh]])
   (:use [dj.core :only [system-root]]))
@@ -70,6 +70,9 @@
 	     (let [n (:name d)
 		   f (new-file system-root "usr/src" n "src/main/clojure")]
 	       (when-not (.exists f)
+		 (let [clojure-folder (new-file system-root "usr/src/clojure")]
+		   (when-not (.exists clojure-folder)
+		     (mkdir clojure-folder)))
 		 (sh "git" "clone" (str "git://github.com/" n ".git")
 		     :dir (.getPath (new-file system-root "usr/src/clojure"))))
 	       f))
