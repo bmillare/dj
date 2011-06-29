@@ -70,7 +70,7 @@
 	     (let [n (:name d)
 		   f (new-file system-root "usr/src" n "src/main/clojure")]
 	       (when-not (.exists f)
-		 (sh "git" "clone" (str "https://github.com/" n ".git")
+		 (sh "git" "clone" (str "git://github.com/" n ".git")
 		     :dir (.getPath (new-file system-root "usr/src/clojure"))))
 	       f))
    :depends-on (fn [d]
