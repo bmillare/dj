@@ -1,3 +1,6 @@
+;; To install auto-complete, download from git://github.com/m2ym/auto-complete.git
+;; Then M-x load-file, auto-complete/etc/install.el
+
 (require 'cl)
 (add-to-list 'load-path "~/.emacs.d/")
 (require 'auto-complete-config)
