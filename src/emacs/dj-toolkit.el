@@ -1,5 +1,9 @@
 ;; To install auto-complete, download from git://github.com/m2ym/auto-complete.git
 ;; Then M-x load-file, auto-complete/etc/install.el
+;; Make the folder dj/lib/ac-dict
+;; Make the file dj/lib/ac-dict/clojure-mode
+;; Edit path to dj
+;; (setq inferior-lisp-program "/home/hara/bin/dj repl")
 
 (require 'cl)
 (add-to-list 'load-path "~/.emacs.d/")
@@ -67,7 +71,7 @@ front of `ac-sources' for the current buffer."
 	  (symbol . "d")
 	  (document . dj-toolkit-doc))))
 
-(setq inferior-lisp-program "/home/bmillare/bin/dj repl")
+(setq inferior-lisp-program "dj repl")
 
 (require 'clojure-mode)
 (add-hook 'clojure-mode-hook 'set-up-dj-toolkit-ac)
