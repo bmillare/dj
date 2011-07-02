@@ -188,3 +188,33 @@
 		     0)
 	      (.write out-stream (.read in-stream))
 	      (recur))))))))
+
+(defrecord persistent-agent [a file-path]
+  clojure.lang.IDeref
+  (deref [_]
+	 @a))
+
+(defn new-persistent-agent
+    "acts like an agent but pushes and pulls from state in file"
+    ([file-path]
+       (persistent-agent. (agent (load-file file-path))
+			  file-path))
+    ([file-path new-value]
+       (poop (new-file file-path)
+	     (binding [*print-dup* true]
+	       (prn-str new-value)))
+       (persistent-agent. (agent new-value)
+			  file-path)))
+
+(defn sendp
+  "like send-off but for persistent agents"
+  [pa f & args]
+  (let [{:keys [a file-path]} pa]
+    (send-off a (fn [old-value]
+		  (let [new-value (apply f old-value args)]
+		    (poop (new-file file-path)
+			  (binding [*print-dup* true]
+			    (prn-str new-value)))
+		    new-value)))
+    #_ pa
+    nil))
