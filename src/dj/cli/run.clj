@@ -14,7 +14,8 @@
 		 (if (= a "false")
 		   false
 		   (keyword a)))
-	  default-options {:verbose true}
+	  default-options {:verbose true
+			   :offline true}
 	  options (if (empty? args)
 		    default-options
 		    (apply assoc default-options args))
