@@ -7,7 +7,9 @@
 	 (.toString s))))
 
 (defmacro log
-  "for debugging, output code and code->val to stdout, returns val, custom-fn accepts two arguments, the code, and the result, it must return a string"
+  "for debugging, output code and code->val to stdout or optional writer, returns val,
+custom-fn accepts two arguments, the code, and the result, it must
+return a string"
   ([code]
      `(let [c# ~code]
 	(prn '~code)
@@ -22,7 +24,8 @@
 	c#)))
 
 (defmacro deflogger
-  "define a custom code logger, custom-fn accepts two arguments, the code, and the result, it must return a string"
+  "define a custom code logger, custom-fn accepts two arguments, the
+  code, and the result, it must return a string"
   [name writer custom-fn]
   (let [c (gensym "code")
 	exp `('log
