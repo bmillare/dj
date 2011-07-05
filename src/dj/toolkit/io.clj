@@ -20,25 +20,33 @@
 	 (interpose "/" (filter #(not (empty? %)) (concat (.split parent "/")
 							  children)))))
 
-(defprotocol Poop
+(defprotocol Ipoop
   "Behave like clojure.core/spit but generically to any destination"
   (poop [dest txt] [dest txt append] "send data to file"))
 
-(defprotocol Eat
+(defprotocol Ieat
   "Behave like clojure.core/slurp but generically to any destination"
   (eat [dest] "obtain data from file"))
 
-(defprotocol Mkdir
+(defprotocol Imkdir
   "make a directory"
   (mkdir [dest]))
 
-(defprotocol Ls
+(defprotocol Ils
   "return list of files in that directory"
   (ls [dest]))
 
-(defprotocol Rm
+(defprotocol Irm
   "deletes path recursively"
   (rm [target]))
+
+(defprotocol Irelative-to
+  "returns new abstract file relative to existing one"
+  (relative-to [folder path]))
+
+(defprotocol Iparent
+  "returns parent file to existing one"
+  (parent [f]))
 
 (defprotocol Call
   "Allow a task to be executed by the executor"
@@ -48,40 +56,9 @@
   "return a future object to manage the executor"
   (rfuture [executor body]))
 
-(defprotocol Get-name
+(defprotocol Iget-name
   "for file like objects, get-name will return the last name in the name sequence of the path"
   (get-name [f]))
-
-;; Destination objects
-(extend-type java.io.File
-  Eat
-  (eat [this] (slurp this))
-  Poop
-  (poop ([this txt append]
-	   (if append
-	     (sh/sh "sh" "-c" (str "cat - >> " (.getPath this)) :in txt)
-	     (spit this txt)))
-	([this txt]
-	   (spit this txt)))
-  Mkdir
-  (mkdir [this] (if (.mkdir this)
-		  this
-		  (throw (Exception. (str "Could not make directory " (.getCanonicalPath this))))))
-  Get-name
-  (get-name [f]
-	    (let [n (.getName f)]
-	      (if (empty? n)
-		nil
-		n)))
-  Ls
-  (ls [dest]
-      (seq (.listFiles dest)))
-  Rm
-  (rm [dest]
-      (when (.isDirectory dest)
-	(doseq [f (ls dest)]
-	  (rm f)))
-      (.delete dest)))
 
 (defn new-file
   "returns a new java.io.File with args as files or str-paths"
@@ -93,34 +70,81 @@
 					  p))
 				      paths))))
 
+(extend-type java.io.File
+  Ieat
+  (eat [this] (slurp this))
+  Ipoop
+  (poop ([this txt append]
+	   (if append
+	     (sh/sh "sh" "-c" (str "cat - >> " (.getPath this)) :in txt)
+	     (spit this txt)))
+	([this txt]
+	   (spit this txt)))
+  Imkdir
+  (mkdir [this] (if (.mkdir this)
+		  this
+		  (throw (Exception. (str "Could not make directory " (.getCanonicalPath this))))))
+  Iget-name
+  (get-name [f]
+	    (let [n (.getName f)]
+	      (if (empty? n)
+		nil
+		n)))
+  Ils
+  (ls [dest]
+      (seq (.listFiles dest)))
+  Irm
+  (rm [dest]
+      (when (.isDirectory dest)
+	(doseq [f (ls dest)]
+	  (rm f)))
+      (.delete dest))
+  Irelative-to
+  (relative-to [folder path]
+	       (new-file folder path))
+  Iparent
+  (parent [f]
+	  (.getParentFile f)))
+
 (defrecord remote-file [path username server port]
-  Poop
+  Ipoop
   (poop [dest txt append]
 	(if append
 	  (ssh username server port (str "cat - >> " path) :in txt)
 	  (ssh username server port (str "cat - > " path) :in txt)))
   (poop [dest txt]
 	(ssh username server port (str "cat - > " path) :in txt))
-  Eat
+  Ieat
   (eat [dest]
        (:out (ssh username server port (shify ["cat" path]))))
-  Mkdir
+  Imkdir
   (mkdir [dest]
 	 (if (zero? (:exit (ssh username server port (str "mkdir -p " path))))
 	   dest
 	   (throw (Exception. (str "Could not make remote directory " path)))))
-  Get-name
+  Iget-name
   (get-name [f]
 	    (last (.split (:path f) "/")))
-  Ls
+  Ils
   (ls [dest]
       (map #(remote-file. (str path "/" %) username server port)
 	   (let [ls-str (:out (ssh username server port (shify ["ls" path])))]
 	     (if (empty? ls-str)
 	       nil
 	       (.split ls-str "\n")))))
-  Rm
-  (rm [target] (ssh username server port (shify ["rm" "-rf" path]))))
+  Irm
+  (rm [target] (ssh username server port (shify ["rm" "-rf" path])))
+  Irelative-to
+  (relative-to [folder path]
+	       (remote-file. (str-path (:path folder) path)
+			     username server port))
+  Iparent
+  (parent [f]
+	  (apply str (if (= (first (:path f))
+			    \/)
+		       "/"
+		       "")
+		 (interpose "/" (filter #(not (empty? %)) (drop-last (.split (:path f) "/")))))))
 
 (defn new-remote-file [path username server port]
   (remote-file. path username server port))
@@ -199,12 +223,13 @@
     ([file-path]
        (persistent-agent. (agent (load-file file-path))
 			  file-path))
-    ([file-path new-value]
-       (poop (new-file file-path)
-	     (binding [*print-dup* true]
-	       (prn-str new-value)))
-       (persistent-agent. (agent new-value)
-			  file-path)))
+    ([file-path default-value]
+       (let [f (new-file file-path)]
+	 (when-not (.exists f)
+	   (poop f
+		 (binding [*print-dup* true]
+		   (prn-str default-value)))))
+       (new-persistent-agent file-path)))
 
 (defn sendp
   "like send-off but for persistent agents"

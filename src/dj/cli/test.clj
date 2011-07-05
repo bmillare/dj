@@ -26,12 +26,12 @@
 					      [(dj.deps.project.project-dependency. project-name)]
 					      options)
 	  src-paths (conj src-paths (dj.io/string (new-file dj.core/system-root "usr/src" project-name "test")))]
-      (println src-paths)
       (dj.classloader/with-new-classloader
 	src-paths
 	jar-paths
 	native-paths
 	`(do (require 'clojure.test)
 	     ~@requires
-	     ~@run-tests)))
+	     ~@run-tests))
+      (shutdown-agents))
     (println "USAGE: dj test <project-name> <namespaces>...")))
