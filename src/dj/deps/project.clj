@@ -19,31 +19,71 @@
 (defn project-name-to-file [project-name]
   (new-file system-root "usr/src/" project-name))
 
-(defrecord project-dependency [name])
-
-(defrecord git-dependency [name git-path]
+(defrecord project-dependency [name]
   ADependency
-  (obtain [d _]
-	  (let [f (new-file system-root "usr/src" name "src")]
-	    (when-not (.exists f)
-	      (sh "git" "clone" git-path
-		  :dir (get-path (new-file system-root "usr/src/"))))
-	    f))
-  (depends-on [d]
+  (obtain [this _]
+	  (new-file system-root "usr/src" name "src"))
+  (depends-on [this]
 	      (let [project-data (read-project (project-name-to-file name))
 		    src-deps (map #(parse % :project-dependency) (:src-dependencies project-data))
 		    jar-deps (map parse (:dependencies project-data))
 		    native-deps (map #(parse % :native-dependency) (:native-dependencies project-data))]
 		(concat src-deps jar-deps native-deps)))
-  (load-type [d] :src)
-  (exclusions [d]
+  (load-type [this] :src)
+  (exclusions [this]
 	      (let [exclusion-data (-> name
 				       project-name-to-file
 				       read-project
 				       :exclusions)]
 		(map #(parse % :project-exclusion) exclusion-data))))
 
-(defrecord source-contrib-dependency [name])
+(defn pass-pom-data
+  "grabs from cache if possible"
+  [name f]
+  (-> (new-file system-root "usr/src" name "pom.xml")
+      clojure.xml/parse
+      dj.deps.maven/condense-xml
+      f))
+
+(defrecord source-contrib-dependency [name]
+  ADependency
+  (obtain [this _]
+	  (let [f (new-file system-root "usr/src" name "src/main/clojure")]
+	    (when-not (.exists f)
+	      (let [clojure-folder (new-file system-root "usr/src/clojure")]
+		(when-not (.exists clojure-folder)
+		  (mkdir clojure-folder)))
+	      (sh "git" "clone" (str "git://github.com/" name ".git")
+		  :dir (get-path (new-file system-root "usr/src/clojure"))))
+	    f))
+  (depends-on [this]
+	      (pass-pom-data name dj.deps.maven/pom-extract-dependencies))
+  (load-type [this] :src)
+  (exclusions [this]
+	      (pass-pom-data name dj.deps.maven/pom-extract-exclusions)))
+
+
+(defrecord git-dependency [name git-path]
+  ADependency
+  (obtain [this _]
+	  (let [f (new-file system-root "usr/src" name "src")]
+	    (when-not (.exists f)
+	      (sh "git" "clone" git-path
+		  :dir (get-path (new-file system-root "usr/src/"))))
+	    f))
+  (depends-on [this]
+	      (let [project-data (read-project (project-name-to-file name))
+		    src-deps (map #(parse % :project-dependency) (:src-dependencies project-data))
+		    jar-deps (map parse (:dependencies project-data))
+		    native-deps (map #(parse % :native-dependency) (:native-dependencies project-data))]
+		(concat src-deps jar-deps native-deps)))
+  (load-type [this] :src)
+  (exclusions [this]
+	      (let [exclusion-data (-> name
+				       project-name-to-file
+				       read-project
+				       :exclusions)]
+		(map #(parse % :project-exclusion) exclusion-data))))
 
 (defmethod parse :project-exclusion [obj & [_]]
 	   (let [id (first obj)
@@ -63,46 +103,3 @@
 	       (source-contrib-dependency. name)
 	       (project-dependency. name))))
 
-(extend project-dependency
-  ADependency
-  {:obtain (fn [d _]
-	     (new-file system-root "usr/src" (:name d) "src"))
-   :depends-on (fn [d]
-		 (let [project-data (read-project (project-name-to-file (:name d)))
-		       src-deps (map #(parse % :project-dependency) (:src-dependencies project-data))
-		       jar-deps (map parse (:dependencies project-data))
-		       native-deps (map #(parse % :native-dependency) (:native-dependencies project-data))]
-		   (concat src-deps jar-deps native-deps)))
-   :load-type (fn [d] :src)
-   :exclusions (fn [d]
-		 (let [exclusion-data (-> (:name d)
-					  project-name-to-file
-					  read-project
-					  :exclusions)]
-		   (map #(parse % :project-exclusion) exclusion-data)))})
-
-(defn pass-pom-data
-  "grabs from cache if possible"
-  [d f]
-  (-> (new-file system-root "usr/src" (:name d) "pom.xml")
-      clojure.xml/parse
-      dj.deps.maven/condense-xml
-      f))
-
-(extend source-contrib-dependency
-  ADependency
-  {:obtain (fn [d _]
-	     (let [n (:name d)
-		   f (new-file system-root "usr/src" n "src/main/clojure")]
-	       (when-not (.exists f)
-		 (let [clojure-folder (new-file system-root "usr/src/clojure")]
-		   (when-not (.exists clojure-folder)
-		     (mkdir clojure-folder)))
-		 (sh "git" "clone" (str "git://github.com/" n ".git")
-		     :dir (get-path (new-file system-root "usr/src/clojure"))))
-	       f))
-   :depends-on (fn [d]
-		 (pass-pom-data d dj.deps.maven/pom-extract-dependencies))
-   :load-type (fn [d] :src)
-   :exclusions (fn [d]
-		 (pass-pom-data d dj.deps.maven/pom-extract-exclusions))})
