@@ -60,6 +60,10 @@
   "for file like objects, get-name will return the last name in the name sequence of the path"
   (get-name [f]))
 
+(defprotocol Iget-path
+  "get str path for file like objects"
+  (get-path [f]))
+
 (defn new-file
   "returns a new java.io.File with args as files or str-paths"
   [& paths]
@@ -104,7 +108,10 @@
 	       (new-file folder path))
   Iparent
   (parent [f]
-	  (.getParentFile f)))
+	  (.getParentFile f))
+  Iget-path
+  (get-path [f]
+	    (.getPath f)))
 
 (defrecord remote-file [path username server port]
   Ipoop
@@ -144,7 +151,10 @@
 			    \/)
 		       "/"
 		       "")
-		 (interpose "/" (filter #(not (empty? %)) (drop-last (.split (:path f) "/")))))))
+		 (interpose "/" (filter #(not (empty? %)) (drop-last (.split (:path f) "/"))))))
+  Iget-path
+  (get-path [f]
+	    (:path f)))
 
 (defn new-remote-file [path username server port]
   (remote-file. path username server port))

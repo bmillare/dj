@@ -1,29 +1,10 @@
 (ns dj.deps.project
   (:require [dj.deps.native])
   (:require [dj.deps.maven])
-  (:use [dj.toolkit :only [new-file str-path mkdir]])
+  (:use [dj.toolkit :only [new-file str-path mkdir get-path]])
   (:use [dj.deps.core :only [ADependency parse]])
   (:use [clojure.java.shell :only [sh]])
   (:use [dj.core :only [system-root]]))
-
-(defrecord project-dependency [name])
-
-(defmethod parse :project-exclusion [obj & [_]]
-	   (let [id (first obj)
-		 name (name id)
-		 group (or (namespace id)
-				    (name id))
-		 version (second obj)]
-	     (fn [d] (and (= (:group d) group)
-			  (= (:name d) name)
-			  (= (:version d) version)))))
-
-(defrecord source-contrib-dependency [name])
-
-(defmethod parse :project-dependency [name & [_]]
-	   (if (= "clojure" (first (.split #"/" name)))
-	     (source-contrib-dependency. name)
-	     (project-dependency. name)))
 
 (defn read-project
   "in directory, looks for file project.clj and returns the result of
@@ -37,6 +18,50 @@
 
 (defn project-name-to-file [project-name]
   (new-file system-root "usr/src/" project-name))
+
+(defrecord project-dependency [name])
+
+(defrecord git-dependency [name git-path]
+  ADependency
+  (obtain [d _]
+	  (let [f (new-file system-root "usr/src" name "src")]
+	    (when-not (.exists f)
+	      (sh "git" "clone" git-path
+		  :dir (get-path (new-file system-root "usr/src/"))))
+	    f))
+  (depends-on [d]
+	      (let [project-data (read-project (project-name-to-file name))
+		    src-deps (map #(parse % :project-dependency) (:src-dependencies project-data))
+		    jar-deps (map parse (:dependencies project-data))
+		    native-deps (map #(parse % :native-dependency) (:native-dependencies project-data))]
+		(concat src-deps jar-deps native-deps)))
+  (load-type [d] :src)
+  (exclusions [d]
+	      (let [exclusion-data (-> name
+				       project-name-to-file
+				       read-project
+				       :exclusions)]
+		(map #(parse % :project-exclusion) exclusion-data))))
+
+(defrecord source-contrib-dependency [name])
+
+(defmethod parse :project-exclusion [obj & [_]]
+	   (let [id (first obj)
+		 name (name id)
+		 group (or (namespace id)
+			   (clojure.core/name id))
+		 version (second obj)]
+	     (fn [d] (and (= (:group d) group)
+			  (= (:name d) name)
+			  (= (:version d) version)))))
+
+(defmethod parse :project-dependency [name & [_]]
+	   (if (re-find #"http://|git://|https://" name)
+	     (let [[_ n] (re-find #"(\w+)\.git" (last (.split #"/" name)))]
+	       (git-dependency. n name))
+	     (if (= "clojure" (first (.split #"/" name)))
+	       (source-contrib-dependency. name)
+	       (project-dependency. name))))
 
 (extend project-dependency
   ADependency
@@ -74,7 +99,7 @@
 		   (when-not (.exists clojure-folder)
 		     (mkdir clojure-folder)))
 		 (sh "git" "clone" (str "git://github.com/" n ".git")
-		     :dir (.getPath (new-file system-root "usr/src/clojure"))))
+		     :dir (get-path (new-file system-root "usr/src/clojure"))))
 	       f))
    :depends-on (fn [d]
 		 (pass-pom-data d dj.deps.maven/pom-extract-dependencies))
