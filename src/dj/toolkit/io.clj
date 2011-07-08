@@ -85,7 +85,7 @@
 	([this txt]
 	   (spit this txt)))
   Imkdir
-  (mkdir [this] (if (.mkdir this)
+  (mkdir [this] (if (.mkdirs this)
 		  this
 		  (throw (Exception. (str "Could not make directory " (.getCanonicalPath this))))))
   Iget-name
@@ -112,6 +112,9 @@
   Iget-path
   (get-path [f]
 	    (.getPath f)))
+
+(defmethod print-dup java.io.File [o w]
+	   (print-ctor o (fn [o w] (.write w (pr-str (.getPath o)))) w))
 
 (defrecord remote-file [path username server port]
   Ipoop
@@ -223,33 +226,33 @@
 	      (.write out-stream (.read in-stream))
 	      (recur))))))))
 
-(defrecord persistent-agent [a file-path]
-  clojure.lang.IDeref
-  (deref [_]
-	 @a))
-
-(defn new-persistent-agent
-    "acts like an agent but pushes and pulls from state in file"
+(defn new-persistent-ref
+    "returns a ref with a watcher that writes to file contents of ref
+as it changes. Write file is considered a 'cache', updates as best as
+possible without slowing down ref"
+    ([file-path the-agent]
+       (let [f (new-file file-path)
+	     writer-queue the-agent
+	     dirty (ref false)
+	     r (ref (load-file file-path))
+	     clean (fn []
+		     (dosync (ref-set dirty false))
+		     (poop f
+			   (binding [*print-dup* true]
+			     (prn-str @r))))]
+	 (add-watch r :writer (fn [k r old-state new-state]
+				(dosync
+				 (when-not @dirty
+				   (ref-set dirty true)
+				   (send-off writer-queue (fn [_]
+							    (clean)))))))
+	 r))
     ([file-path]
-       (persistent-agent. (agent (load-file file-path))
-			  file-path))
-    ([file-path default-value]
+       (new-persistent-ref file-path (agent nil)))
+    ([file-path the-agent default-value]
        (let [f (new-file file-path)]
 	 (when-not (.exists f)
 	   (poop f
 		 (binding [*print-dup* true]
 		   (prn-str default-value)))))
-       (new-persistent-agent file-path)))
-
-(defn sendp
-  "like send-off but for persistent agents"
-  [pa f & args]
-  (let [{:keys [a file-path]} pa]
-    (send-off a (fn [old-value]
-		  (let [new-value (apply f old-value args)]
-		    (poop (new-file file-path)
-			  (binding [*print-dup* true]
-			    (prn-str new-value)))
-		    new-value)))
-    #_ pa
-    nil))
+       (new-persistent-ref file-path the-agent)))
