@@ -46,7 +46,8 @@
 
 (defn is-snapshot?
   [dependency]
-  (.contains (:version dependency) "SNAPSHOT"))
+  (when-let [v (:version dependency)]
+    (.contains v "SNAPSHOT")))
 
 (defn relative-directory
   "takes dependency map and returns String path prefix"
