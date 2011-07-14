@@ -25,10 +25,11 @@
 			       (recur (next r))))))
 	letresolve! (fn resolve! [d]
 		      (when (:verbose options)
-			(if (exclude? d)
-			  (println "excluding" d)
-			  (println "resolving" d)))
+			(when (exclude? d)
+			  (println "excluding" d)))
 		      (when-not (or (@resolved d) (exclude? d))
+			(when (:verbose options)
+			  (println "resolving" d))
 			(if (@seen d)
 			  (throw (Exception. (str "Circular dependency detected resolving " d)))
 			  (let [obtained (dj.deps.core/obtain d options)]

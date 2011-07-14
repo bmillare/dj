@@ -16,10 +16,10 @@
 					  "http://clojars.org/repo/"
 					  "http://alxa.sourceforge.net/m2"]))
 
-(defrecord maven-dependency [name version group pom-cache])
+(defrecord maven-dependency [name version group])
 
 (defn make-maven-dependency [name version group]
-  (maven-dependency. name version group (atom nil)))
+  (maven-dependency. name version group))
 
 (defn condense-xml
   "given output from clojure.xml/parse, returns same tree but
@@ -117,7 +117,16 @@
 		       (download-jar-pom! (next repositories))
 		       (throw (java.io.FileNotFoundException. (str "Can't find "
 								   directory-file-prefix
-								   ".pom from any remote repository")))))))]
+								   ".pom from any remote repository")))))
+		   (catch java.lang.RuntimeException e
+		     (if (instance? java.io.FileNotFoundException
+				    (.getCause e))
+		       (if (next repositories)
+			 (download-jar-pom! (next repositories))
+			 (throw (java.io.FileNotFoundException. (str "Can't find "
+								     directory-file-prefix
+								     ".pom from any remote repository"))))
+		       (throw (.getCause e))))))]
 	  (download-jar-pom! repository-urls))))))
 
 ;; base locations
@@ -239,15 +248,16 @@ snapshot"
 	  :when d-data]
       (make-maven-dependency (:name d-data) (:version d-data) (:group d-data)))))
 
-(defn pass-pom-data
-  "grabs from cache if possible"
-  [d f]
-  (let [pom-cache (:pom-cache d)
-	pom-data (or @pom-cache
-		     (reset! pom-cache (-> (pom-file d)
-					   clojure.xml/parse
-					   condense-xml)))]
-    (f pom-data)))
+(let [pom-cache (atom {})]
+  (defn pass-pom-data
+    "grabs from cache if possible"
+    [d f]
+    (f (or (@pom-cache d)
+	   (let [pom-data (-> (pom-file d)
+			      clojure.xml/parse
+			      condense-xml)]
+	     (swap! pom-cache assoc d pom-data)
+	     (f pom-data))))))
 
 (extend maven-dependency
   ADependency

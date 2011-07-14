@@ -90,10 +90,13 @@
 		 name (name id)
 		 group (or (namespace id)
 			   (clojure.core/name id))
-		 version (second obj)]
+		 version (second obj)
+		 version-p (if (= version "*")
+			     (fn [d] true)
+			     (fn [d] (= (:version d) version)))]
 	     (fn [d] (and (= (:group d) group)
 			  (= (:name d) name)
-			  (= (:version d) version)))))
+			  (version-p d)))))
 
 (defmethod parse :project-dependency [name & [_]]
 	   (if (re-find #"http://|git://|https://" name)
