@@ -13,7 +13,7 @@
 
 (defun dj-toolkit-completions ()
   (comint-send-string (inferior-lisp-proc)
-		      "(dj.toolkit/poop (new-file (System/getProperty \"user.home\") \"dj/lib/ac-dict/clojure-mode\") (apply str (interpose \"\n\" (dj.toolkit/all-completions *ns*))))\n"))
+		      "(dj.toolkit/poop (dj.toolkit/new-file (System/getProperty \"user.home\") \"dj/lib/ac-dict/clojure-mode\") (apply str (interpose \"\n\" (dj.toolkit/all-completions *ns*))))\n"))
 
 (defun ac-source-dj-toolkit-candidates ()
   "Return a possibly-empty list of completions for the symbol at point."
