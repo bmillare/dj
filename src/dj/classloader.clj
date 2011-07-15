@@ -5,6 +5,17 @@
   (:require [dj.deps.maven])
   (:require [dj.core]))
 
+;; BUG
+;; classlojure works by first having a reference to the root
+;; classloader (.getParent (.getClassLoader clojure.lang.RT)) and then
+;; making a new java.net.URLClassLoader and setting the threads
+;; classloader with (.setContextClassLoader (Thread/currentThread) cl#)
+
+;; for future, nailgun like dj, need to set parent of brand new
+;; urlclassloader to be root so that separate clojure instances can be run
+;; also need to use try and finally to restore classloader
+;; or also do invoke in and in different thread style
+
 (def +boot-classpaths+
      (apply conj #{} (map #(File. %)
 			  (.split (System/getProperty "java.class.path")
@@ -44,6 +55,7 @@
   `(let [cl# (dj.classloader/get-current-classloader)]
      (in-ns '~caller-ns)
      (def ~(with-meta '*classloader* {:dynamic true}) cl#)
+     (.setContextClassLoader (Thread/currentThread) cl#)
      ;; Reset java.library.path by setting sys_paths variable in java.lang.ClassLoader to NULL, depends on java implementation knowledge
      (let [clazz# java.lang.ClassLoader
 	   field# (.getDeclaredField clazz# "sys_paths")] 
