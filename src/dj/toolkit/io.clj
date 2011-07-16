@@ -40,6 +40,10 @@
   "deletes path recursively"
   (rm [target]))
 
+(defprotocol Imv
+  "renames or moves file"
+  (mv [target dest]))
+
 (defprotocol Irelative-to
   "returns new abstract file relative to existing one"
   (relative-to [folder path]))
@@ -103,6 +107,9 @@
 	(doseq [f (ls dest)]
 	  (rm f)))
       (.delete dest))
+  Imv
+  (mv [target dest]
+      (.renameTo target dest))
   Irelative-to
   (relative-to [folder path]
 	       (new-file folder path))
@@ -148,6 +155,9 @@
   (relative-to [folder path]
 	       (remote-file. (str-path (:path folder) path)
 			     username server port))
+  Imv
+  (mv [target dest]
+      (ssh username server port (shify ["mv" path dest])))
   Iparent
   (parent [f]
 	  (apply str (if (= (first (:path f))

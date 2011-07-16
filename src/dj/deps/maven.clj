@@ -1,5 +1,6 @@
 (ns dj.deps.maven
   (:require [dj.io])
+  (:require [dj.toolkit :as tk])
   (:require [clojure.xml])
   (:require [dj.net])
   (:use [dj.deps.core]))
@@ -18,7 +19,7 @@
 
 (defrecord maven-dependency [name version group])
 
-(defn make-maven-dependency [name version group]
+(defn new-maven-dependency [name version group]
   (maven-dependency. name version group))
 
 (defn condense-xml
@@ -36,7 +37,7 @@
 (defmethod parse (class []) [obj & [_]]
 	   (let [id (first obj)
 		 version (second obj)]
-	     (make-maven-dependency (name id)
+	     (new-maven-dependency (name id)
 				version
 				(or (namespace id)
 				    (name id)))))
@@ -55,6 +56,13 @@
   (str (.replaceAll group "\\." "/") "/"
        name "/"
        version "/"))
+
+(defn available-versions
+  "takes dependency map and remote repo url, returns list of available
+  versions provided by repo"
+  [{:keys [name group]} repo-url-str]
+  (map second (re-seq #"<a href=\"(\d(?!/).+)/\">"
+		      (dj.net/wget-str! (str repo-url-str (.replaceAll group "\\." "/") "/" name "/")))))
 
 (defn latest-prefix
   [mvn-metadata]
@@ -101,32 +109,29 @@
                                    downloads files to temporary (run within a with-tmp-directory)
                                    directory before moving, does clean
                                    up after"
-		 (try
-		   (let [downloaded-pom (dj.net/wget! (str (first repositories) directory-file-prefix ".pom")
-						      tmp-folder)
-			 downloaded-jar (dj.net/wget! (str (first repositories) directory-file-prefix ".jar")
-						      tmp-folder)]
-		     ;; side effects, order important
-		     (dj.io/make-directory! (.getParentFile local-pom))
-		     ;; move files to local repository
-		     (.renameTo downloaded-jar local-jar)
-		     (.renameTo downloaded-pom local-pom)
-		     local-jar)
-		   (catch java.io.FileNotFoundException e
-		     (if (next repositories)
-		       (download-jar-pom! (next repositories))
-		       (throw (java.io.FileNotFoundException. (str "Can't find "
-								   directory-file-prefix
-								   ".pom from any remote repository")))))
-		   (catch java.lang.RuntimeException e
-		     (if (instance? java.io.FileNotFoundException
-				    (.getCause e))
-		       (if (next repositories)
-			 (download-jar-pom! (next repositories))
-			 (throw (java.io.FileNotFoundException. (str "Can't find "
-								     directory-file-prefix
-								     ".pom from any remote repository"))))
-		       (throw (.getCause e))))))]
+		 (let [find-in-next-repo #(if-let [remaining-repos (next repositories)]
+					    (download-jar-pom! remaining-repos)
+					    (throw (java.io.FileNotFoundException. (str "Can't find "
+											directory-file-prefix
+											".pom from any remote repository"))))]
+		   (try
+		    (let [downloaded-pom (dj.net/wget! (str (first repositories) directory-file-prefix ".pom")
+						       tmp-folder)
+			  downloaded-jar (dj.net/wget! (str (first repositories) directory-file-prefix ".jar")
+						       tmp-folder)]
+		      ;; side effects, order important
+		      (dj.io/make-directory! (.getParentFile local-pom))
+		      ;; move files to local repository
+		      (.renameTo downloaded-jar local-jar)
+		      (.renameTo downloaded-pom local-pom)
+		      local-jar)
+		    (catch java.io.FileNotFoundException e
+		      (find-in-next-repo))
+		    (catch java.lang.RuntimeException e
+		      (if (instance? java.io.FileNotFoundException
+				     (.getCause e))
+			(find-in-next-repo)
+			(throw (.getCause e)))))))]
 	  (download-jar-pom! repository-urls))))))
 
 ;; base locations
@@ -246,7 +251,7 @@ snapshot"
 				   :optional nil))
 			   name-version-group))]
 	  :when d-data]
-      (make-maven-dependency (:name d-data) (:version d-data) (:group d-data)))))
+      (new-maven-dependency (:name d-data) (:version d-data) (:group d-data)))))
 
 (let [pom-cache (atom {})]
   (defn pass-pom-data
