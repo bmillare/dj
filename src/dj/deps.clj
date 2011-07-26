@@ -10,7 +10,9 @@
   jar-paths native-paths], where those elements are paths to files as
   strings"
   [dependencies options]
-  (let [seen (ref #{})
+  (let [print-depth (atom 0)
+	print-depth-fn #(apply str (take @print-depth (repeatedly (fn [] \space))))
+	seen (ref #{})
 	resolved (ref #{})
 	src-paths (ref [])
 	jar-paths (ref [])
@@ -26,17 +28,19 @@
 	letresolve! (fn resolve! [d]
 		      (when (:verbose options)
 			(when (exclude? d)
-			  (println "excluding" d)))
+			  (println (str (print-depth-fn) "excluding") d)))
 		      (when-not (or (@resolved d) (exclude? d))
 			(when (:verbose options)
-			  (println "resolving" d))
+			  (println (str (print-depth-fn) "resolving") d))
 			(if (@seen d)
 			  (throw (Exception. (str "Circular dependency detected resolving " d)))
 			  (let [obtained (dj.deps.core/obtain d options)]
 			    (dosync (alter seen conj d)
 				    (when-let [rules (dj.deps.core/exclusions d)]
 				      (alter exclusion-rules concat rules)))
+			    (swap! print-depth inc)
 			    (doall (map resolve! (dj.deps.core/depends-on d)))
+			    (swap! print-depth dec)
 			    (dosync (alter seen disj d)
 				    (alter resolved conj d)
 				    (case (dj.deps.core/load-type d)

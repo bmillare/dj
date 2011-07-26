@@ -43,7 +43,7 @@
   (-> (new-file system-root "usr/src" name "pom.xml")
       clojure.xml/parse
       dj.deps.maven/condense-xml
-      f))
+      (f nil)))
 
 (defrecord source-contrib-dependency [name]
   ADependency

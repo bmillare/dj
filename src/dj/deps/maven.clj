@@ -28,8 +28,7 @@
 
 (defn new-maven-dependency [name version group]
   (maven-dependency. name
-		     (if (or (.startsWith version "[")
-			     (.startsWith version "{"))
+		     (if (.startsWith version "[")
 		       (last (sort (concat (mapcat (fn [repo-url]
 						     (try
 						       (available-versions {:name name
@@ -236,26 +235,26 @@ snapshot"
 						      (relative-directory dependency) (:name dependency) "-" (:version dependency) ".pom"
 						      " from any remote repository"))))))))
 
-(defn pom-extract-exclusions [data]
+(defn pom-extract-exclusions [data parent]
   (let [project-data (:project data)]
-    (seq (concat (for [{dependency :dependency} (find-map-entry project-data :dependencies)
-		       :let [y (seq (concat (for [{e :exclusion} (find-map-entry dependency :exclusions)
-						  :let [x (let [e-data (loop [c e
-									      name-group {}]
-									 (if c
-									   (let [x (first c)]
-									     (case (first (keys x))
-										   :groupId (recur (next c) (assoc name-group :group (first (:groupId x))))
-										   :artifactId (recur (next c) (assoc name-group :name (first (:artifactId x))))))
-									   name-group))]
-							    (fn [d] (and (= (:group d) (:group e-data))
-									 (= (:name d) (:name e-data)))))]
-						  :when x]
-					      x)))]
-		       :when y]
-		   y)))))
+    (apply concat (for [{dependency :dependency} (find-map-entry project-data :dependencies)
+			:let [y (for [{e :exclusion} (find-map-entry dependency :exclusions)
+				      :let [x (let [e-data (loop [c e
+								  name-group {}]
+							     (if c
+							       (let [x (first c)]
+								 (case (first (keys x))
+								       :groupId (recur (next c) (assoc name-group :group (first (:groupId x))))
+								       :artifactId (recur (next c) (assoc name-group :name (first (:artifactId x))))))
+							       name-group))]
+						(fn [d] (and (= (:group d) (:group e-data))
+							     (= (:name d) (:name e-data)))))]
+				      :when x]
+				  x)]
+			:when y]
+		    y))))
 
-(defn pom-extract-dependencies [data]
+(defn pom-extract-dependencies [data parent]
   (let [project-data (:project data)]
     (for [{d :dependency} (find-map-entry project-data :dependencies)
 	  :let [d-data (loop [c d
@@ -270,7 +269,16 @@ snapshot"
 				   :optional nil))
 			   name-version-group))]
 	  :when d-data]
-      (new-maven-dependency (:name d-data) (:version d-data) (:group d-data)))))
+      (let [name (:name d-data)
+	    version (:version d-data)
+	    group (:group d-data)]
+	(new-maven-dependency name
+			      (if (.startsWith version "$")
+				(case version
+				      "${project.version}" (:version parent)
+				      (str "[" (:version parent) ",)"))
+				version)
+			      group)))))
 
 (let [pom-cache (atom {})]
   (defn pass-pom-data
@@ -281,7 +289,8 @@ snapshot"
 			      clojure.xml/parse
 			      condense-xml)]
 	     (swap! pom-cache assoc d pom-data)
-	     (f pom-data))))))
+	     pom-data))
+       d)))
 
 (extend maven-dependency
   ADependency
