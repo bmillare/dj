@@ -19,8 +19,32 @@
 
 (defrecord maven-dependency [name version group])
 
+(defn available-versions
+  "takes dependency map and remote repo url, returns list of available
+  versions provided by repo"
+  [{:keys [name group]} repo-url-str]
+  (map second (re-seq #"<a href=\"(\d(?!/).+)/\">"
+		      (dj.net/wget-str! (str repo-url-str (.replaceAll group "\\." "/") "/" name "/")))))
+
 (defn new-maven-dependency [name version group]
-  (maven-dependency. name version group))
+  (maven-dependency. name
+		     (if (or (.startsWith version "[")
+			     (.startsWith version "{"))
+		       (last (sort (concat (mapcat (fn [repo-url]
+						     (try
+						       (available-versions {:name name
+									    :group group}
+									   repo-url)
+						       (catch Exception e
+							 nil)))
+						   repository-urls)
+					   (map tk/get-name (tk/ls (dj.io/file
+								    repositories-directory
+								    "maven"
+								    (str (.replaceAll group "\\." "/") "/"
+									 name "/")))))))
+		       version)
+		     group))
 
 (defn condense-xml
   "given output from clojure.xml/parse, returns same tree but
@@ -36,11 +60,13 @@
 
 (defmethod parse (class []) [obj & [_]]
 	   (let [id (first obj)
-		 version (second obj)]
-	     (new-maven-dependency (name id)
-				version
-				(or (namespace id)
-				    (name id)))))
+		 name (name id)
+		 version (second obj)
+		 group (or (namespace id)
+			   name)]
+	     (new-maven-dependency name
+				   version
+				   group)))
 
 (defn find-map-entry [m k]
   (k (first (filter k m))))
@@ -56,13 +82,6 @@
   (str (.replaceAll group "\\." "/") "/"
        name "/"
        version "/"))
-
-(defn available-versions
-  "takes dependency map and remote repo url, returns list of available
-  versions provided by repo"
-  [{:keys [name group]} repo-url-str]
-  (map second (re-seq #"<a href=\"(\d(?!/).+)/\">"
-		      (dj.net/wget-str! (str repo-url-str (.replaceAll group "\\." "/") "/" name "/")))))
 
 (defn latest-prefix
   [mvn-metadata]
