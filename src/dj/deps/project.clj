@@ -100,7 +100,7 @@
 
 (defmethod parse :project-dependency [name & [_]]
 	   (if (re-find #"http://|git://|https://" name)
-	     (let [[_ n] (re-find #"(\w+)\.git" (last (.split #"/" name)))]
+	     (let [[_ n] (re-find #"((?:\w|-|_)+)\.git" (last (.split #"/" name)))]
 	       (git-dependency. n name))
 	     (if (= "clojure" (first (.split #"/" name)))
 	       (source-contrib-dependency. name)
