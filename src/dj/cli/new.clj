@@ -14,6 +14,8 @@
 	(.mkdir (File. dir "src"))
 	(.mkdir (File. dir (str "src/" project-name)))
 	(spit (File. dir "project.clj")
-	      (prn-str `(~'defproject ~(symbol project-name) "0.1.0"
-			  :dependencies [[foo.bar/baz "1.0.0"]])))))))
+	      (str "(defproject " project-name " \"0.1.0\"
+  :dependencies nil #_ [[foo.bar/baz \"1.0.0\"] [foo.baz/bar \"[1.2.0,)\"]]
+  :src-dependencies nil #_ [\"incanter\" \"clojure/core.logic\" \"git://github.com/cgrand/enlive.git\"]
+  :native-dependencies nil #_ [[penumbra/lwjgl \"2.4.2\"]])"))))))
 
