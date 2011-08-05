@@ -11,6 +11,8 @@ unzip clojure-1.3.0-beta1.zip
 rm clojure-1.3.0-beta1.zip
 cd ../lib
 ln -s ../opt/clojure-1.3.0-beta1/clojure-1.3.0-beta1.jar clojure.jar
+mkdir ac-dict
+touch ac-dict/clojure-mode
 
 echo "==================== IMPORTANT ===================="
 echo "Symlink dj/bin/run-dj-tool.sh to your path"
