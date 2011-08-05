@@ -17,7 +17,7 @@
 		    \/)
 	       "/"
 	       "")
-	 (interpose "/" (filter #(not (empty? %)) (mapcat #(.split % "/") (list* parent children))))))
+	 (interpose "/" (filter #(not (empty? %)) (mapcat #(.split (str %) "/") (list* parent children))))))
 
 (defprotocol Ipoop
   "Behave like clojure.core/spit but generically to any destination"
