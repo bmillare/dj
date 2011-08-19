@@ -26,6 +26,14 @@
 	src-paths
 	jar-paths
 	native-paths
-	'(clojure.main/main)))
-    (clojure.main/main)))
+	'(clojure.main/repl
+	  :init (fn []
+		  (println "Clojure" (clojure-version))
+		  (in-ns 'user))
+	  :prompt (fn [] (printf ";%s=> " (ns-name *ns*))))))
+    (clojure.main/repl
+     :init (fn []
+	     (println "Clojure" (clojure-version))
+	     (in-ns 'user))
+     :prompt (fn [] (printf ";%s=> " (ns-name *ns*))))))
 
