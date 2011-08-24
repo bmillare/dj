@@ -50,91 +50,117 @@
   (compute-id [this] (digest/sha-256 (print-dup-str this))))
 
 (defprotocol Idb
-  (read-obj [this namespace id])
-  (write-obj [this obj namespace id])
-  (read-ref [this namespace name])
-  (write-ref [this obj namespace name]))
+  (read-obj [this id])
+  (write-obj [this obj id])
+  (read-pvar [this namespace name])
+  (write-pvar [this obj namespace name]))
 
 (def ^:dynamic *db* nil)
 
 ;; Note loops do exist
-(defrecord local-link [namespace id]
+(defrecord local-link [id]
   clojure.lang.IDeref
   (deref
    [this]
    ;; May want to make this recursive instead and remove *db*, this way can implement a lazy version
-   (read-obj *db* namespace id)))
+   (read-obj *db* id)))
 
 (prefer-method print-method clojure.lang.IRecord clojure.lang.IDeref)
 
-(defprintable-ctor local-link [namespace id])
+(defprintable-ctor local-link [id])
 
-(defprotocol Iref-exists?
-  (ref-exists? [db namespace id]))
+(defprotocol Ipvar-exists?
+  (pvar-exists? [db namespace name]))
 
 (defrecord local-db [path]
   Idb
-  (read-obj [db namespace id]
+  (read-obj [db id]
 	    (let [path (:path db)
 		  prefix (subs id 0 2)
 		  tail (subs id 2)]
-	      (load-file (tk/str-path path namespace ".objects" prefix tail))))
-  (write-obj [db obj namespace id]
+	      (load-file (tk/str-path path ".objects" prefix tail))))
+  (write-obj [db obj id]
 	     (let [path (:path db)
 		   prefix (subs id 0 2)
 		   tail (subs id 2)
-		   folder (tk/new-file path namespace ".objects" prefix)]
+		   folder (tk/new-file path ".objects" prefix)]
 	       (when-not (.exists folder)
 		 (tk/mkdir folder))
 	       (tk/poop (tk/new-file folder tail)
 			(print-dup-str obj))))
-  (read-ref [db namespace name]
-	    (load-file (tk/str-path path namespace name)))
-  (write-ref [db obj namespace name]
-	     (let [folder (tk/new-file path namespace)]
+  (read-pvar [db namespace name]
+	    (load-file (tk/str-path path namespace ".pvars" name)))
+  (write-pvar [db obj namespace name]
+	     (let [folder (tk/new-file path namespace ".pvars")]
 	       (when-not (.exists folder)
 		 (tk/mkdir folder))
 	       (tk/poop (tk/new-file folder name)
 			(print-dup-str obj))))
-  Iref-exists?
-  (ref-exists?
-   [db namespace id]
-   (.exists (tk/new-file path namespace id))))
+  Ipvar-exists?
+  (pvar-exists?
+   [db namespace name]
+   (.exists (tk/new-file path namespace ".pvars" name))))
 
 (defprintable-ctor local-db [path])
 
-(defn write! [namespace obj]
-  (let [namespace (str namespace)
-	id (compute-id obj)]
-    (write-obj *db* obj namespace id)
-    (new-local-link namespace id)))
+;; TODO, make this more like namespaces, add var space, macros for symbols
 
-(defn new-ref! [symbol obj]
-  (let [namespace (namespace symbol)
-	name (name symbol)]
-    (if (ref-exists? *db* namespace name)
-      (throw (Exception. (str "Ref: " (tk/str-path namespace name)  " already exists")))
-      (do (write-ref *db* obj namespace name)
-	  obj))))
+(defn new! [obj]
+  (let [id (compute-id obj)]
+    (write-obj *db* obj id)
+    (new-local-link id)))
 
-(defn reset-ref! [symbol obj]
-  (let [namespace (namespace symbol)
-	name (name symbol)]
-    (if (ref-exists? *db* namespace name)
-      (do (write-ref *db* obj namespace name)
+(def ^:dynamic *p-ns* nil)
+
+(defn defponce* [namespace name obj]
+  (if (pvar-exists? *db* namespace name)
+    nil
+    (do (write-pvar *db* obj namespace name)
+	obj)))
+
+(defmacro defponce [s obj]
+  (let [namespace (namespace s)
+	name (name s)]
+    (if namespace
+      `(defponce* ~namespace ~name ~obj)
+      `(defponce* *p-ns* ~name ~obj))))
+
+(defn defp* [namespace name obj]
+  (write-pvar *db* obj namespace name)
+  obj)
+
+(defmacro defp [s obj]
+  (let [namespace (namespace s)
+	name (name s)]
+    (if namespace
+      `(defp* ~namespace ~name ~obj)
+      `(defp* *p-ns* ~name ~obj))))
+
+(defn alter-pvar* [namespace name fun & args]
+  (let [obj (read-pvar *db* namespace name)]
+    (if (pvar-exists? *db* namespace name)
+      (do (write-pvar *db* (apply fun obj args) namespace name)
 	  obj)
-      (throw (Exception. (str "Ref: " (tk/str-path namespace name)  " does not exist"))))))
+      (throw (Exception. (str "Pvar: " (tk/str-path namespace name)  " does not exist"))))))
 
-(defn alter-ref! [symbol fun & args]
-  (let [namespace (namespace symbol)
-	name (name symbol)
-	obj (read-ref *db* namespace name)]
-    (if (ref-exists? *db* namespace name)
-      (do (write-ref *db* (apply fun obj args) namespace name)
-	  obj)
-      (throw (Exception. (str "Ref: " (tk/str-path namespace name)  " does not exist"))))))
+(defmacro alter-pvar [s fun & args]
+  (let [namespace (namespace s)
+	name (name s)]
+    (if namespace
+      `(alter-pvar* ~namespace ~name ~fun ~@args)
+      `(alter-pvar* *p-ns* ~name ~fun ~@args))))
 
-(defn read-ref! [symbol]
-  (let [namespace (namespace symbol)
-	name (name symbol)]
-    (read-ref *db* namespace name)))
+(defmacro pvar [s]
+  (let [namespace (namespace s)
+	name (name s)]
+    (if namespace
+      `(read-pvar *db* ~namespace ~name)
+      `(read-pvar *db* *p-ns* ~name))))
+
+(defmacro with-db
+  "db - database, p-ns - persistant namespace, body - code"
+  [db p-ns & body]
+  (let [p-ns (str p-ns)]
+    `(binding [*db* ~db
+	      *p-ns* ~p-ns]
+      ~@body)))
