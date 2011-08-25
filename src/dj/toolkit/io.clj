@@ -122,6 +122,28 @@
 (defmethod print-dup java.io.File [o w]
 	   (print-ctor o (fn [o w] (.write w (pr-str (.getPath o)))) w))
 
+(defprotocol Imutable
+  (s! [this value]))
+
+(let [get-clipboard #(.getSystemClipboard (java.awt.Toolkit/getDefaultToolkit))]
+  (def clipboard (reify
+		  Imutable
+		  (s!
+		   [clip text]
+		   (.setContents (get-clipboard) (java.awt.datatransfer.StringSelection. text) nil)
+		   text)
+		  clojure.lang.IDeref
+		  (deref
+		   [clip]
+		   (try
+		     (.getTransferData (.getContents (get-clipboard) nil) (java.awt.datatransfer.DataFlavor/stringFlavor))
+		     (catch java.lang.NullPointerException e nil))))))
+
+(defn update [obj fun & args]
+  (let [v (apply fun @obj args)]
+    (s! obj v)
+    v))
+
 (defrecord remote-file [path username server port]
   Ipoop
   (poop [dest txt append]

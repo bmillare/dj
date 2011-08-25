@@ -9,7 +9,7 @@
       (print-dup obj sw))
     (.toString sw)))
 
-(defmacro simple-defrecord-print-ctor* [object-name o fields w]
+(defmacro simple-defrecord-print-ctor* [object-name fields]
   (let [class-name (.getName ^Class (resolve object-name))
 	class-name-split (vec (.split #"\." class-name))
 	name (str (apply str (interpose "." (drop-last 1 class-name-split)))
@@ -17,24 +17,23 @@
 		  (nth class-name-split (dec (count class-name-split))))
 	w* (gensym "w")
 	o* (gensym "o")]
-    `(let [~w* ~w
-	   ~o* ~o]
-       (.write ~w* "(")
-       (.write ~w* ~name)
-       (.write ~w* " ")
-       ~@(interpose `(.write ~w* " ") (map (fn [field]
-					     `(print-dup (~field ~o*)
-							 ~w*))
-					   fields))
-       (.write ~w* ")"))))
+    `(defmethod print-dup ~(symbol class-name)
+		[~o* ~(with-meta w* {:tag 'java.io.Writer})]
+		(.write ~w* "(")
+		(.write ~w* ~name)
+		(.write ~w* " ")
+		~@(interpose `(.write ~w* " ") (map (fn [field]
+						      `(print-dup (~field ~o*)
+								  ~w*))
+						    fields))
+		(.write ~w* ")"))))
 
 (defmacro defprintable-ctor [name symbols]
   (let [w (gensym "w")]
     `(do
        (defn ~(symbol (str "new-" name)) ~symbols
 	 (new ~name ~@symbols))
-       (defmethod print-dup ~name [o# ~(with-meta w {:tag 'java.io.Writer})]
-		  (simple-defrecord-print-ctor* ~name o# [~@(map keyword symbols)] ~w)))))
+       (simple-defrecord-print-ctor* ~name [~@(map keyword symbols)]))))
 
 ;; Main concepts are namespace and id
 
@@ -52,8 +51,8 @@
 (defprotocol Idb
   (read-obj [this id])
   (write-obj [this obj id])
-  (read-pvar [this namespace name])
-  (write-pvar [this obj namespace name]))
+  (resolve-pvar [this namespace name])
+  (intern-pvar [this obj namespace name]))
 
 (def ^:dynamic *db* nil)
 
@@ -65,12 +64,52 @@
    ;; May want to make this recursive instead and remove *db*, this way can implement a lazy version
    (read-obj *db* id)))
 
-(prefer-method print-method clojure.lang.IRecord clojure.lang.IDeref)
-
 (defprintable-ctor local-link [id])
+
+(prefer-method print-method clojure.lang.IRecord clojure.lang.IDeref)
+(prefer-method print-method clojure.lang.IPersistentMap clojure.lang.IDeref)
+
+(defrecord code [form]
+  clojure.lang.IDeref
+  (deref
+   [this]
+   (eval form)))
+
+(defn new-code [form]
+      (new code form))
+(defmethod print-dup code
+  [o w]
+  (.write w "(")
+  (.write w "dj.toolkit.experimental.db/new-code")
+  (.write w " ")
+  (print-dup `(quote ~(:form o)) w)
+  (.write w ")"))
+
+(defmacro pquote [form]
+  `(db/new-code (quote ~form)))
 
 (defprotocol Ipvar-exists?
   (pvar-exists? [db namespace name]))
+
+(defrecord pvar* [namespace name]
+  clojure.lang.IDeref
+  (deref
+   [this]
+   (resolve-pvar *db* namespace name)))
+
+(simple-defrecord-print-ctor* pvar* [:namespace :name])
+
+(defn new-pvar* [namespace name]
+  (if (pvar-exists? *db* namespace name)
+    (pvar*. namespace name)
+    (throw (Exception. (str "Unable to resolve symbol: " namespace "/" name " in this context")))))
+
+(defmacro pvar [s]
+  (let [namespace (namespace s)
+	name (name s)]
+    (if namespace
+      `(new-pvar* ~namespace ~name)
+      `(new-pvar* *p-ns* ~name))))
 
 (defrecord local-db [path]
   Idb
@@ -88,9 +127,11 @@
 		 (tk/mkdir folder))
 	       (tk/poop (tk/new-file folder tail)
 			(print-dup-str obj))))
-  (read-pvar [db namespace name]
-	    (load-file (tk/str-path path namespace ".pvars" name)))
-  (write-pvar [db obj namespace name]
+  (resolve-pvar [db namespace name]
+	     (if (pvar-exists? db namespace name)
+	       (load-file (tk/str-path path namespace ".pvars" name))
+	       (throw (Exception. (str "Unable to resolve symbol: " namespace "/" name " in this context")))))
+  (intern-pvar [db obj namespace name]
 	     (let [folder (tk/new-file path namespace ".pvars")]
 	       (when-not (.exists folder)
 		 (tk/mkdir folder))
@@ -115,8 +156,8 @@
 (defn defponce* [namespace name obj]
   (if (pvar-exists? *db* namespace name)
     nil
-    (do (write-pvar *db* obj namespace name)
-	obj)))
+    (do (intern-pvar *db* obj namespace name)
+	(new-pvar* namespace name))))
 
 (defmacro defponce [s obj]
   (let [namespace (namespace s)
@@ -126,8 +167,8 @@
       `(defponce* *p-ns* ~name ~obj))))
 
 (defn defp* [namespace name obj]
-  (write-pvar *db* obj namespace name)
-  obj)
+  (intern-pvar *db* obj namespace name)
+  (new-pvar* namespace name))
 
 (defmacro defp [s obj]
   (let [namespace (namespace s)
@@ -137,10 +178,10 @@
       `(defp* *p-ns* ~name ~obj))))
 
 (defn alter-pvar* [namespace name fun & args]
-  (let [obj (read-pvar *db* namespace name)]
+  (let [obj (resolve-pvar *db* namespace name)]
     (if (pvar-exists? *db* namespace name)
-      (do (write-pvar *db* (apply fun obj args) namespace name)
-	  obj)
+      (do (intern-pvar *db* (apply fun obj args) namespace name)
+	  (new-pvar* namespace name))
       (throw (Exception. (str "Pvar: " (tk/str-path namespace name)  " does not exist"))))))
 
 (defmacro alter-pvar [s fun & args]
@@ -150,12 +191,21 @@
       `(alter-pvar* ~namespace ~name ~fun ~@args)
       `(alter-pvar* *p-ns* ~name ~fun ~@args))))
 
-(defmacro pvar [s]
+(defmacro at [s]
   (let [namespace (namespace s)
 	name (name s)]
     (if namespace
-      `(read-pvar *db* ~namespace ~name)
-      `(read-pvar *db* *p-ns* ~name))))
+      `(resolve-pvar *db* ~namespace ~name)
+      `(resolve-pvar *db* *p-ns* ~name))))
+
+#_ (extend-type clojure.lang.Symbol
+  clojure.lang.IDeref
+  (deref [this]
+	 (let [namespace (namespace this)
+	       name (name this)]
+	   (if namespace
+	     (resolve-pvar *db* namespace name)
+	     (resolve-pvar *db* *p-ns* name)))))
 
 (defmacro with-db
   "db - database, p-ns - persistant namespace, body - code"
