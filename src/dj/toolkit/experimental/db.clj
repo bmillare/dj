@@ -9,7 +9,6 @@
       (print-dup obj sw))
     (.toString sw)))
 
-;; Make version for used with read-string
 (defmacro simple-defrecord-print-ctor* [object-name fields]
   (let [class-name (.getName ^Class (resolve object-name))
 	w* (gensym "w")
@@ -24,26 +23,6 @@
 							 ~w*))
 					   fields))
        (.write ~w* ")"))))
-
-;; This version is for load-file
-#_ (defmacro simple-defrecord-print-ctor* [object-name fields]
-  (let [class-name (.getName ^Class (resolve object-name))
-	class-name-split (vec (.split #"\." class-name))
-	name (str (apply str (interpose "." (drop-last 1 class-name-split)))
-		  "/new-"
-		  (nth class-name-split (dec (count class-name-split))))
-	w* (gensym "w")
-	o* (gensym "o")]
-    `(defmethod print-dup ~(symbol class-name)
-		[~o* ~(with-meta w* {:tag 'java.io.Writer})]
-		(.write ~w* "(")
-		(.write ~w* ~name)
-		(.write ~w* " ")
-		~@(interpose `(.write ~w* " ") (map (fn [field]
-						      `(print-dup (~field ~o*)
-								  ~w*))
-						    fields))
-		(.write ~w* ")"))))
 
 (defmacro defprintable-ctor [name symbols]
   (let [w (gensym "w")]
@@ -133,7 +112,6 @@
 	    (let [path (:path db)
 		  prefix (subs id 0 2)
 		  tail (subs id 2)]
-	      #_ (load-file (tk/str-path path ".objects" prefix tail))
 	      (read-string (tk/eat (tk/new-file path ".objects" prefix tail)))))
   (write-obj [db obj id]
 	     (let [path (:path db)
@@ -146,7 +124,6 @@
 			(print-dup-str obj))))
   (resolve-pvar [db namespace name]
 	     (if (pvar-exists? db namespace name)
-	       #_ (load-file (tk/str-path path namespace ".pvars" name))
 	       (read-string (tk/eat (tk/new-file path namespace ".pvars" name)))
 	       (throw (Exception. (str "Unable to resolve symbol: " namespace "/" name " in this context")))))
   (intern-pvar [db obj namespace name]
