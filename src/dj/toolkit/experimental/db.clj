@@ -9,7 +9,24 @@
       (print-dup obj sw))
     (.toString sw)))
 
+;; Make version for used with read-string
 (defmacro simple-defrecord-print-ctor* [object-name fields]
+  (let [class-name (.getName ^Class (resolve object-name))
+	w* (gensym "w")
+	o* (gensym "o")]
+    `(defmethod print-dup ~(symbol class-name)
+       [~o* ~(with-meta w* {:tag 'java.io.Writer})]
+       (.write ~w* "#=(")
+       (.write ~w* ~class-name)
+       (.write ~w* ". ")
+       ~@(interpose `(.write ~w* " ") (map (fn [field]
+					     `(print-dup (~field ~o*)
+							 ~w*))
+					   fields))
+       (.write ~w* ")"))))
+
+;; This version is for load-file
+#_ (defmacro simple-defrecord-print-ctor* [object-name fields]
   (let [class-name (.getName ^Class (resolve object-name))
 	class-name-split (vec (.split #"\." class-name))
 	name (str (apply str (interpose "." (drop-last 1 class-name-split)))
@@ -69,25 +86,6 @@
 (prefer-method print-method clojure.lang.IRecord clojure.lang.IDeref)
 (prefer-method print-method clojure.lang.IPersistentMap clojure.lang.IDeref)
 
-(defrecord code [form]
-  clojure.lang.IDeref
-  (deref
-   [this]
-   (eval form)))
-
-(defn new-code [form]
-      (new code form))
-(defmethod print-dup code
-  [o w]
-  (.write w "(")
-  (.write w "dj.toolkit.experimental.db/new-code")
-  (.write w " ")
-  (print-dup `(quote ~(:form o)) w)
-  (.write w ")"))
-
-(defmacro pquote [form]
-  `(db/new-code (quote ~form)))
-
 (defprotocol Ipvar-exists?
   (pvar-exists? [db namespace name]))
 
@@ -111,13 +109,32 @@
       `(new-pvar* ~namespace ~name)
       `(new-pvar* *p-ns* ~name))))
 
+(defprotocol Ipvar-accessor
+  (pvar-access [link]))
+
+(defrecord map-accessor [pvar i]
+  Ipvar-accessor
+  (pvar-access
+   [this]
+   (@pvar i)))
+
+(simple-defrecord-print-ctor* map-accessor [:pvar :i])
+(defmacro new-map-accessor [s i]
+  (let [namespace (namespace s)
+	name (name s)]
+    (if namespace
+      `(map-accessor. (new-pvar* ~namespace ~name) ~i)
+      `(map-accessor. (new-pvar* *p-ns* ~name) ~i))))
+
+
 (defrecord local-db [path]
   Idb
   (read-obj [db id]
 	    (let [path (:path db)
 		  prefix (subs id 0 2)
 		  tail (subs id 2)]
-	      (load-file (tk/str-path path ".objects" prefix tail))))
+	      #_ (load-file (tk/str-path path ".objects" prefix tail))
+	      (read-string (tk/eat (tk/new-file path ".objects" prefix tail)))))
   (write-obj [db obj id]
 	     (let [path (:path db)
 		   prefix (subs id 0 2)
@@ -129,7 +146,8 @@
 			(print-dup-str obj))))
   (resolve-pvar [db namespace name]
 	     (if (pvar-exists? db namespace name)
-	       (load-file (tk/str-path path namespace ".pvars" name))
+	       #_ (load-file (tk/str-path path namespace ".pvars" name))
+	       (read-string (tk/eat (tk/new-file path namespace ".pvars" name)))
 	       (throw (Exception. (str "Unable to resolve symbol: " namespace "/" name " in this context")))))
   (intern-pvar [db obj namespace name]
 	     (let [folder (tk/new-file path namespace ".pvars")]
