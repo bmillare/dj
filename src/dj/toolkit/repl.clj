@@ -266,21 +266,17 @@ return a string"
 (defn all-threads
   "Get a seq of the current threads."
   []
-  (let [grp (.getThreadGroup (Thread/currentThread))
-	cnt (.activeCount grp)
-	ary (make-array Thread cnt)]
-    (.enumerate grp ary)
-    (seq ary)))
+  (seq (.keySet (Thread/getAllStackTraces))))
 
 (defn top-threads
   "Return a seq of threads sorted by their total userland CPU usage."
   []
   (let [mgr (java.lang.management.ManagementFactory/getThreadMXBean)
 	cpu-times (map (fn [t]
-			 [(.getThreadCpuTime mgr (.getId t)) t])
+			 [(.getThreadCpuTime mgr (.getId ^Thread t)) t])
 		       (all-threads))]
     (map
-     (fn [[cpu t]] [cpu (.getName t) (.getId t) t])
+     (fn [[cpu t]] [cpu (.getName ^Thread t) (.getId ^Thread t) t])
      (reverse (sort-by first cpu-times)))))
 
 (defn new-future-index

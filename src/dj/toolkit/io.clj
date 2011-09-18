@@ -70,12 +70,12 @@
 (defn new-file
   "returns a new java.io.File with args as files or str-paths"
   [& paths]
-  (java.io.File. (apply str-path (map (fn [p]
-					(if (= (type p)
-					       java.io.File)
-					  (.getPath p)
-					  p))
-				      paths))))
+  (java.io.File. ^String (apply str-path (map (fn [p]
+						(if (= (type p)
+						       java.io.File)
+						  (.getPath ^java.io.File p)
+						  p))
+					      paths))))
 
 (extend-type java.io.File
   Ieat
@@ -120,7 +120,7 @@
 	    (.getPath f)))
 
 (defmethod print-dup java.io.File [o w]
-	   (print-ctor o (fn [o w] (.write w (pr-str (.getPath o)))) w))
+	   (print-ctor o (fn [o w] (.write ^java.io.Writer w (pr-str (.getPath ^java.io.File o)))) w))
 
 (defprotocol Imutable
   (s! [this value]))
@@ -130,13 +130,13 @@
 		  Imutable
 		  (s!
 		   [clip text]
-		   (.setContents (get-clipboard) (java.awt.datatransfer.StringSelection. text) nil)
+		   (.setContents ^java.awt.datatransfer.Clipboard (get-clipboard) (java.awt.datatransfer.StringSelection. text) nil)
 		   text)
 		  clojure.lang.IDeref
 		  (deref
 		   [clip]
 		   (try
-		     (.getTransferData (.getContents (get-clipboard) nil) (java.awt.datatransfer.DataFlavor/stringFlavor))
+		     (.getTransferData (.getContents ^java.awt.datatransfer.Clipboard (get-clipboard) nil) (java.awt.datatransfer.DataFlavor/stringFlavor))
 		     (catch java.lang.NullPointerException e nil))))))
 
 (defn update [obj fun & args]
@@ -162,14 +162,14 @@
 	   (throw (Exception. (str "Could not make remote directory " path)))))
   Iget-name
   (get-name [f]
-	    (last (.split (:path f) "/")))
+	    (last (.split ^String (:path f) "/")))
   Ils
   (ls [dest]
       (map #(remote-file. (str path "/" %) username server port)
 	   (let [ls-str (:out (ssh username server port (shify ["ls" path])))]
 	     (if (empty? ls-str)
 	       nil
-	       (.split ls-str "\n")))))
+	       (.split ^String ls-str "\n")))))
   Irm
   (rm [target] (ssh username server port (shify ["rm" "-rf" path])))
   Irelative-to
@@ -185,7 +185,7 @@
 			    \/)
 		       "/"
 		       "")
-		 (interpose "/" (filter #(not (empty? %)) (drop-last (.split (:path f) "/"))))))
+		 (interpose "/" (filter #(not (empty? %)) (drop-last (.split ^String (:path f) "/"))))))
   Iget-path
   (get-path [f]
 	    (:path f)))
@@ -245,8 +245,8 @@
 
 (defn unjar [^java.io.File jar-file install-dir]
   (let [jar-file (java.util.jar.JarFile. jar-file)]
-    (for [entry (enumeration-seq (.entries jar-file))
-	  :let [f (new-file install-dir (.getName entry))]]
+    (for [^java.io.File entry (enumeration-seq (.entries jar-file))
+	  :let [^java.io.File f (new-file install-dir (.getName entry))]]
       (if (.isDirectory entry)
 	(.mkdirs f)
 	(with-open [in-stream (.getInputStream jar-file entry)
@@ -281,7 +281,7 @@ possible without slowing down ref"
     ([file-path]
        (new-persistent-ref file-path (agent nil)))
     ([file-path the-agent default-value]
-       (let [f (new-file file-path)]
+       (let [^java.io.File f (new-file file-path)]
 	 (when-not (.exists f)
 	   (poop f
 		 (binding [*print-dup* true]

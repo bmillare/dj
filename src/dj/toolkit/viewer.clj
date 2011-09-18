@@ -1,7 +1,7 @@
 (in-ns 'dj.toolkit)
 
 (defn text-box [title data]
-  (doto (JFrame. title)
+  (doto (JFrame. ^String title)
     (.setContentPane (doto (javax.swing.JTextArea. (if (empty? data)
 						     "Empty data"
 						     (if (= java.lang.String
@@ -13,7 +13,7 @@
     (.setVisible true)))
 
 (defn scroll-box [title text columns rows]
-  (doto (JFrame. title)
+  (doto (JFrame. ^String title)
     (.setContentPane (javax.swing.JScrollPane. (doto (javax.swing.JTextArea. text rows columns)
 						 (.setFont (java.awt.Font. "Courier" java.awt.Font/PLAIN 14)))))
     (.pack)
