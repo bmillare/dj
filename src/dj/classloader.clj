@@ -34,7 +34,7 @@
       (apply conj +boot-classpaths+ files))))
 
 (defn get-current-classloader []
-  (clojure.lang.RT/baseLoader))
+  (.getContextClassLoader (Thread/currentThread)))
 
 (defn add-to-classpath!
   "given file, a jar or a directory, adds it to classpath for classloader
@@ -52,7 +52,7 @@
    jar-paths
    native-paths
    body]
-  `(let [cl# (dj.classloader/get-current-classloader)]
+  `(let [cl# (clojure.lang.RT/baseLoader)]
      (in-ns '~caller-ns)
      (def ~(with-meta '*classloader* {:dynamic true}) cl#)
      (.setContextClassLoader (Thread/currentThread) cl#)
