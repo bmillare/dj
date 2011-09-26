@@ -316,3 +316,13 @@ return a string"
 (defn ls-futures [future-index]
   (update-all-in (:futures-map @future-index)
 		 :doc))
+
+(defmacro defmacro!
+  "Defines a macro in which all args are evaled only once."
+  [name args & body]
+  (let [rep-map (apply hash-map
+                       (mapcat (fn [s] [s `(quote ~(gensym))])
+                               args))]
+    `(defmacro ~name ~args
+       `(let ~~(vec (mapcat (fn [[s t]] [t s]) rep-map))
+          ~(clojure.walk/postwalk-replace ~rep-map ~@body)))))
