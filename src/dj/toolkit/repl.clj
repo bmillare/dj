@@ -317,12 +317,26 @@ return a string"
   (update-all-in (:futures-map @future-index)
 		 :doc))
 
+(defn- bang-symbol?
+  "Returns true, if sym is a symbol with name ending in a exclamation
+  mark (bang)."
+  [sym]
+  (and (symbol? sym)
+       (= (last (name sym)) \!)))
+
 (defmacro defmacro!
-  "Defines a macro in which all args are evaled only once."
-  [name args & body]
-  (let [rep-map (apply hash-map
+  "Defines a macro name with the given docstring, args, and body.
+  All args ending in an exclamation mark (!, bang) will be evaluated only once
+  in the expansion, even if they are unquoted at several places in body.  This
+  is especially important for args whose evaluation has side-effecs or who are
+  expensive to evaluate."
+  [name docstring args & body]
+  (let [bang-syms (filter bang-symbol? args)
+        rep-map (apply hash-map
                        (mapcat (fn [s] [s `(quote ~(gensym))])
-                               args))]
-    `(defmacro ~name ~args
+                               bang-syms))]
+    `(defmacro ~name
+       ~docstring
+       ~args
        `(let ~~(vec (mapcat (fn [[s t]] [t s]) rep-map))
           ~(clojure.walk/postwalk-replace ~rep-map ~@body)))))
