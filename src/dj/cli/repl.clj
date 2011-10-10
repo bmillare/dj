@@ -14,23 +14,20 @@
    dependencies can be fulfilled, ie. you should have access to the
    projects sources and jar dependencies"
   [& args]
-  (if-let [project-name (first args)]
-    (let [args (map read-string (next args))
-	  default-options {:verbose true
-			   :offline true}
-	  options (if (empty? args)
-		    default-options
-		    (apply assoc default-options args))
-	  [src-paths jar-paths native-paths] (dj.deps/obtain-dependencies! [(dj.deps.core/parse project-name :project-dependency)] options)]
-      (dj.classloader/with-new-classloader
-	src-paths
-	jar-paths
-	native-paths
-	'(clojure.main/repl
-	  :init (fn []
-		  (println "Clojure" (clojure-version))
-		  (in-ns 'user))
-	  :prompt (fn [] (printf ";%s=> " (ns-name *ns*))))))
+  (let [project-name (first args)
+	args (map read-string (next args))
+	default-options {:verbose true
+			 :offline true}
+	options (if (empty? args)
+		  default-options
+		  (apply assoc default-options args))
+	cl (clojure.lang.RT/baseLoader)]
+    (.setContextClassLoader (Thread/currentThread) cl)
+    (dj.classloader/add-dependencies! cl
+				      (if project-name
+					[project-name]
+					nil)
+				      options)
     (clojure.main/repl
      :init (fn []
 	     (println "Clojure" (clojure-version))

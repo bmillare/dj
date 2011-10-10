@@ -287,3 +287,8 @@ possible without slowing down ref"
 		 (binding [*print-dup* true]
 		   (prn-str default-value)))))
        (new-persistent-ref file-path the-agent)))
+
+(defn to-byte-array [^java.io.File x]
+  (with-open [buffer (java.io.ByteArrayOutputStream.)]
+    (clojure.java.io/copy x buffer)
+    (.toByteArray buffer)))

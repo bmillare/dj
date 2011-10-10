@@ -1,5 +1,4 @@
 (ns dj.deps
-  (:require [dj.cli])
   (:require [dj.io])
   (:require [dj.deps.core])
   (:require [dj.core :as core]))
