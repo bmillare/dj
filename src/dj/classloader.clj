@@ -89,6 +89,8 @@
 	 (.set field clazz nil)
 	 (System/setProperty "java.library.path" (apply str (interpose ";" native-paths))))
        (doseq [p src-jar-paths]
-	 (dj.classloader/unchecked-add-to-classpath! cl p))))
-  ([cl ds]
-     (add-dependencies! cl ds {:verbose true :offline true})))
+	 (unchecked-add-to-classpath! cl p))))
+  ([ds]
+     (add-dependencies! (.getParent (get-current-classloader))
+			ds
+			{:verbose true :offline true})))
