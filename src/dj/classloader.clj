@@ -48,11 +48,14 @@
   "given file, a jar or a directory, adds it to classpath for classloader
 
    ASSUMES a jars with the same path are identical"
-  [classloader f]
-  (let [f (tk/new-file f)]
-   (when-not ((get-classpaths classloader) f)
-     (.addURL classloader (.toURL (.toURI f)))
-     f)))
+  ([classloader path]
+     (let [f (tk/new-file path)]
+       (when-not ((get-classpaths classloader) f)
+	 (.addURL classloader (.toURL (.toURI f)))
+	 f)))
+  ([path]
+     (add-to-classpath! (.getParent (get-current-classloader))
+			path)))
 
 (defn reload-class-file
   "Reload a .class file during runtime, this allows you to recompile
