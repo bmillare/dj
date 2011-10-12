@@ -1,3 +1,5 @@
+# dj 0.1.x
+
 # Motivation
 
 "dj takes the cacaphony of java, git, clojure, and build tools and
@@ -43,20 +45,24 @@ Let's add a simple hello.clj file:
 Let's add the classpath to the current directory and see if we can
 require it:
 
-    ;user=> (dj.classloader/add-to-classpath! "/home/user/")
-    #<File /home/user>
-    ;user=> (require '[hello])
-    hello world
-    nil
+```clojure
+;user=> (dj.classloader/add-to-classpath! "/home/user/")
+#<File /home/user>
+;user=> (require '[hello])
+hello world
+nil
+```
 
 Let's load some dependencies, how about incanter?:
 
-    ;user=> (dj.classloader/add-dependencies! '[[incanter/incanter "1.3.0-SNAPSHOT"]])
-    resolving #dj.deps.maven.maven-dependency{.....
-    ...
-    nil
-    ;user=> (require '[incanter.core])
-    nil
+```clojure
+;user=> (dj.classloader/add-dependencies! '[[incanter/incanter "1.3.0-SNAPSHOT"]])
+resolving #dj.deps.maven.maven-dependency{.....
+...
+nil
+;user=> (require '[incanter.core])
+nil
+```
 
 ## Starting a new project in the dj source repository
 
@@ -77,16 +83,20 @@ Edit the project.clj file to depend on a clojure contrib project on github
 
 project.clj:
 
-    (defproject hw "1.0.0" :src-dependencies ["clojure/core.logic"])
+```clojure
+(defproject hw "1.0.0" :src-dependencies ["clojure/core.logic"])
+```
 
 In the src/hw/ directory, create a clj file:
 
 src/hw/core.clj:
 
-    (ns hw.core (:use [clojure.core.logic.minikanren]))
+```clojure
+(ns hw.core (:use [clojure.core.logic.minikanren]))
 
-    (defn hello-world [] (print "hello world"))
-    (defrel man x)
+(defn hello-world [] (print "hello world"))
+(defrel man x)
+```
 
 ## Advanced Repl
 
@@ -96,10 +106,12 @@ If we want the repl to include our project, we append the project name
 
 then we can try it out:
 
-    ;user=> (require 'hw.core)
-    nil
-    ;user=> (hw.core/hello-world)
-    hello worldnil
+```clojure
+;user=> (require 'hw.core)
+nil
+;user=> (hw.core/hello-world)
+hello worldnil
+```
 
 If you check ~/dj/usr/
 
@@ -140,7 +152,9 @@ we would start the hw project repl using
 # Developing with emacs, inferior-lisp
 in the .emacs file, add:
 
-    (setq inferior-lisp-program "~/dj/bin/run-dj-tool.sh repl")
+```elisp
+(setq inferior-lisp-program "~/dj/bin/run-dj-tool.sh repl")
+```
 
 Note: Also, I've included a rlwrap'd version of run-dj-tool.sh, so if rlwrap
 is installed on your system, link to ~/dj/bin/run-dj-tool-rlwrap.sh
