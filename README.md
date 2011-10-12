@@ -98,7 +98,7 @@ src/hw/core.clj:
 (defrel man x)
 ```
 
-## Advanced Repl
+## Advanced REPL
 
 If we want the repl to include our project, we append the project name
 
