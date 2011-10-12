@@ -28,9 +28,9 @@ or for help about a command
 
     $ dj help foo-command
 
-## Set classpath obtain dependencies lazily
+## Set both classpath and obtain dependencies lazily
 
-We can create a repl at anytime using:
+We can create a repl anytime and anywhere using:
 
     $ dj repl
     Clojure 1.3.0
@@ -38,9 +38,7 @@ We can create a repl at anytime using:
 
 Let's add a simple hello.clj file:
 
-hello.clj:
-
-    (println "hello world")
+    $ echo '(println "hello world")' > hello.clj
     
 Let's add the classpath to the current directory and see if we can
 require it:
@@ -152,9 +150,9 @@ Optional: If you are using rlwrap, generate the completions.
 
     $ dj rlwrap make-completions
 
-# Feature list
+# Features
 
-* Practically no dependencies, only needs clojure and java.
+* Few dependencies, only needs clojure and java.
 
 * Supports source dependencies, you can have your project depend on
   other projects you are developing.
@@ -208,6 +206,16 @@ versions concurrently.
 
 # Limitations
 
+* Currently only uses 1.3.0
+
+* Does not support starting different REPL versions
+
+* Currently no support for building jars
+
+* Limited support for all of leiningen's project.clj syntax
+
+* Limited support for all of maven's configuration in pom.xml files
+
 Currently, loading dependencies dynamically, by adding to the
 classpath during runtime, is possible by using clojure's
 DynamicClassLoader. The advantage to doing this is there is little
@@ -237,46 +245,46 @@ of scoping native dependencies at the jvm level.
 * The design of the directory hierarchy is based of the design of linux's
  specifically, gentoo's
 
-bin/
- -dj binaries and scripts to manage system
-src/
- -source code for dj
-lib/
- -symlinks of system dependencies 
-
--the remaining directories are ignored by git (listed in .gitignore)
-
-usr/
- -local (non-system) content
-usr/src
- -repository for live projects
-usr/bin
- -native dep binaries
-usr/maven
- -maven repository
-usr/native
- -native repository
-etc/
- -system configuration files
-sbin/
--this directory is required only if the local operating
- system/distribution does not provide the dependencies
- -contains system dependency binaries, binaries necessary to run clojure
-  and dj, this is designed to be minimal
- -pretty much should contain the jdk and git
-opt/
- -location of system and native system dependencies that need to persist
- -the install directory for java
- -installation of applications that don't fit the dj model
-tmp/
- -contains transient files
-tmp/dj
- -workspace for building system and native dependencies
-tmp/repository
- -workspace for downloading/resolving dependencies before moving into
-  the repository
-var/
- -logs, crash reports
+    bin/
+     -dj binaries and scripts to manage system
+    src/
+     -source code for dj
+    lib/
+     -symlinks of system dependencies 
+    
+    -the remaining directories are ignored by git (listed in .gitignore)
+    
+    usr/
+     -local (non-system) content
+    usr/src
+     -repository for live projects
+    usr/bin
+     -native dep binaries
+    usr/maven
+     -maven repository
+    usr/native
+     -native repository
+    etc/
+     -system configuration files
+    sbin/
+    -this directory is required only if the local operating
+     system/distribution does not provide the dependencies
+     -contains system dependency binaries, binaries necessary to run clojure
+      and dj, this is designed to be minimal
+     -pretty much should contain the jdk and git
+    opt/
+     -location of system and native system dependencies that need to persist
+     -the install directory for java
+     -installation of applications that don't fit the dj model
+    tmp/
+     -contains transient files
+    tmp/dj
+     -workspace for building system and native dependencies
+    tmp/repository
+     -workspace for downloading/resolving dependencies before moving into
+      the repository
+    var/
+     -logs, crash reports
 
 # adding tasks
 
