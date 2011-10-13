@@ -26,6 +26,11 @@
   (map second (re-seq #"<a href=\"(\d(?!/).+)/\">"
 		      (dj.net/wget-str! (str repo-url-str (.replaceAll group "\\." "/") "/" name "/")))))
 
+(defn ls-repo
+  "lists the folders in a repository"
+  [group repo-url-str]
+  (map second (re-seq #"<a href=\"((?!\").+)/\">" (dj.net/wget-str! (str repo-url-str (.replaceAll group "\\." "/") "/")))))
+
 (defn new-maven-dependency [name version group]
   (maven-dependency. name
 		     (if (.startsWith version "[")
