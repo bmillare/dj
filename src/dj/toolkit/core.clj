@@ -55,3 +55,16 @@
 (defmacro defcase [name dispatch-value arglist & body]
   `(let [dv# ~dispatch-value]
      (defcase* ~name dv# (fn ~arglist ~@body))))
+
+;; Taken from Zachary Tellman's Potemkin
+(defmacro import-fn 
+  "Given a function in another namespace, defines a function by
+   the same name in the current namespace.  Argument lists and
+   doc-strings are preserved."
+  [sym]
+  (let [m (meta (eval sym))
+        m (meta (intern (:ns m) (:name m)))
+        n (:name m)
+        arglists (:arglists m)
+        doc (:doc m)]
+    (list `def (with-meta n {:doc doc :arglists (list 'quote arglists)}) (eval sym))))

@@ -15,6 +15,11 @@
      (catch java.io.FileNotFoundException e
        error-fn))))
 
+(defn use-baseloader! []
+  (let [cl (clojure.lang.RT/baseLoader)]
+    (.setContextClassLoader (Thread/currentThread) cl)
+    cl))
+
 (defn main [& [task & args]]
   (let [task (or task "help")]
     (apply (resolve-task task) args)))

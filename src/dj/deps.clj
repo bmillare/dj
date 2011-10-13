@@ -1,5 +1,4 @@
 (ns dj.deps
-  (:require [dj.io])
   (:require [dj.deps.core])
   (:require [dj.core :as core]))
 
@@ -49,6 +48,4 @@
 						    (alter jar-paths concat jars)
 						    (alter native-paths concat libs))))))))]
     (doall (map letresolve! dependencies))
-    [(map dj.io/string @src-paths)
-     (map dj.io/string @jar-paths)
-     (map dj.io/string @native-paths)]))
+    [@src-paths @jar-paths @native-paths]))

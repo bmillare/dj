@@ -15,11 +15,10 @@
     (let [default-options {:verbose true
 			   :offline true}
 	  options default-options
-	  cl (clojure.lang.RT/baseLoader)]
-      (.setContextClassLoader (Thread/currentThread) cl)
-      (dj.classloader/add-to-classpath! cl (.getCanonicalPath (tk/new-file dj.core/system-root "usr/src" project-name "test")))
+	  cl (dj.cli/use-baseloader!)]
+      (dj.classloader/unchecked-add-to-classpath! cl (tk/new-file dj.core/system-root "usr/src" project-name "test"))
       (dj.classloader/add-dependencies! cl
-					[project-name]
+					[(dj.deps.project/->project-dependency project-name)]
 					options)
       (require 'clojure.test)
       (doseq [n namespaces]

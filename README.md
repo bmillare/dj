@@ -1,4 +1,4 @@
-# dj 0.1.x
+# dj 0.2.x
 
 # Motivation
 
@@ -17,6 +17,14 @@ native dependencies.
 1. Download wget --no-check-certificate 'http://github.com/bmillare/dj/raw/master/bin/install.sh'
 2. Put somewhere in path, 'chmod +x install.sh' to make executable and run
 3. Symlink the executable dj/bin/run-dj-tool.sh to your path
+
+# Changes
+
+## New API
+
+* new namespace dj that contains all dj utilities available to the user
+
+* dj.toolkit is like the clojure contrib of dj, it has useful utilities not ready for core or that doesn't belong in core
 
 # Usage
 
@@ -46,9 +54,10 @@ Let's add the classpath to the current directory and see if we can
 require it:
 
 ```clojure
-;user=> (dj.classloader/add-to-classpath! "/home/user/")
+'user=> (require 'dj)
+'user=> (dj/add-to-classpath! "/home/user/")
 #<File /home/user>
-;user=> (require '[hello])
+'user=> (require '[hello])
 hello world
 nil
 ```
@@ -56,11 +65,12 @@ nil
 Let's load some dependencies, how about incanter?:
 
 ```clojure
-;user=> (dj.classloader/add-dependencies! '[[incanter/incanter "1.3.0-SNAPSHOT"]])
+'user=> (require 'dj)
+'user=> (dj/add-dependencies! '[[incanter/incanter "1.3.0-SNAPSHOT"]])
 resolving #dj.deps.maven.maven-dependency{.....
 ...
 nil
-;user=> (require '[incanter.core])
+'user=> (require '[incanter.core])
 nil
 ```
 
@@ -107,9 +117,9 @@ If we want the repl to include our project, we append the project name
 then we can try it out:
 
 ```clojure
-;user=> (require 'hw.core)
+'user=> (require 'hw.core)
 nil
-;user=> (hw.core/hello-world)
+'user=> (hw.core/hello-world)
 hello worldnil
 ```
 

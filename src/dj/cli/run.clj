@@ -16,11 +16,10 @@
 	options (if (empty? args)
 		  default-options
 		  (apply assoc default-options args))
-	cl (clojure.lang.RT/baseLoader)]
-    (.setContextClassLoader (Thread/currentThread) cl)
+	cl (dj.cli/use-baseloader!)]
     (dj.classloader/add-dependencies! cl
 				      (if project-name
-					[project-name]
+					[(dj.deps.project/->project-dependency project-name)]
 					nil)
 				      options)
     (load-file filename)))
