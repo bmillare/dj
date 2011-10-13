@@ -108,7 +108,7 @@ src/hw/core.clj:
 (defrel man x)
 ```
 
-## Advanced REPL
+## Advanced REPL startup
 
 If we want the repl to include our project, we append the project name
 
@@ -263,6 +263,14 @@ What seems to be the most significant factor in this case, however, is
 the inability to dynamically change the native dependencies during
 runtime without affecting multiple clojure instances. There is a lack
 of scoping native dependencies at the jvm level.
+
+# TODO
+
+* figure out how to make repositories-urls easier to manage
+
+* decouple clojure-version of dj with clojure-version with project
+
+* create utilities to search remote repositories for available jars
 
 # File Directory Structure
 
