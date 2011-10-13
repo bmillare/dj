@@ -240,6 +240,8 @@ versions concurrently.
 
 * Limited support for all of maven's configuration in pom.xml files
 
+* Runs only on *nix at the moment
+
 Currently, loading dependencies dynamically, by adding to the
 classpath during runtime, is possible by using clojure's
 DynamicClassLoader. The advantage to doing this is there is little
