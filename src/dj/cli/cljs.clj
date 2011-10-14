@@ -38,7 +38,7 @@
 			    (in-ns 'user))
 		    :prompt (fn [] (printf ";%s=> " (ns-name *ns*)))))
 	  "install" (let []
-		      #_ (sh/sh "git" "clone" "git://github.com/clojure/clojurescript.git"
+		      (sh/sh "git" "clone" "git://github.com/clojure/clojurescript.git"
 			     :dir src-dir)
 		      (sh/sh "script/bootstrap"
 			     :dir cljs-dir))
