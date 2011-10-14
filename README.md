@@ -2,8 +2,8 @@
 
 # Motivation
 
-"dj takes the cacaphony of java, git, clojure, and build tools and
-mixes it into something harmonious."
+"dj takes the cacaphony of java, git, clojure, clojurescript and build
+tools and mixes it into something harmonious."
 
 In a nutshell, dj is an attempt to make a clojure distribution. Like
 leiningen and maven, dj resolves dependencies, however, dj tries to be
