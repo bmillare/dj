@@ -38,6 +38,7 @@
 			    (in-ns 'user))
 		    :prompt (fn [] (printf ";%s=> " (ns-name *ns*)))))
 	  "install" (let []
+		      (println "Note: Currently the bootstrap script requires curl")
 		      (sh/sh "git" "clone" "git://github.com/clojure/clojurescript.git"
 			     :dir src-dir)
 		      (sh/sh "script/bootstrap"
