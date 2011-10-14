@@ -73,6 +73,25 @@ nil
 'user=> (require '[incanter.core])
 nil
 ```
+## Play with Clojurescript
+
+Install it:
+
+    $ dj cljs install
+
+This simply uses git to pull the sources to dj/usr/src/    
+
+Start a REPL with cljs in classpath:
+
+    $ dj cljs repl
+
+This just adds the clojurescript classpaths to a repl, you can do this
+during runtime as well by just adding these paths:
+
+    clojurescript/lib/* (but not clojure.jar)
+    clojurescript/src/clj
+    clojurescript/src/cljs
+    clojurescript/test/cljs
 
 ## Starting a new project in the dj source repository
 
