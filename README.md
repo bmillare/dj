@@ -26,6 +26,8 @@ native dependencies.
 
 * dj.toolkit is like the clojure contrib of dj, it has useful utilities not ready for core or that doesn't belong in core
 
+* supports clojurescript
+
 # Usage
 
 ## Getting Help
