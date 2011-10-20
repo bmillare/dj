@@ -108,7 +108,9 @@
       (.delete dest))
   Imv
   (mv [target dest]
-      (.renameTo target dest))
+      (if (.isDirectory dest)
+	(.renameTo target (new-file dest (.getName target)))
+	(.renameTo target dest)))
   Irelative-to
   (relative-to [folder path]
 	       (new-file folder path))

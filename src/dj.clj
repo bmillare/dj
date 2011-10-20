@@ -1,7 +1,8 @@
 (ns dj
   (:require [dj.toolkit :as tk])
   (:require [dj.classloader :as cl])
-  (:require [dj.deps core project maven]))
+  (:require [dj.deps core project maven])
+  (:require [dj.core]))
 
 (tk/import-fn #'cl/get-classpaths)
 (tk/import-fn #'cl/get-current-classloader)
@@ -40,3 +41,14 @@
 			:when r]
 		    r)]
        (cl/add-dependencies! classloader d-objs options))))
+
+(defn add-cljs-to-classpath! []
+  (let [cljs-dir (tk/new-file dj.core/system-root "usr/src/clojurescript")
+	paths (concat (filter #(not= % (tk/new-file cljs-dir "lib/clojure.jar"))
+			      (tk/ls (tk/new-file cljs-dir "lib")))
+		      (map #(tk/new-file cljs-dir %)
+			   ["src/clj"
+			    "src/cljs"
+			    "test/cljs"]))]
+    (doseq [p paths]
+      (add-to-classpath! p))))
