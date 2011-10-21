@@ -1,4 +1,4 @@
-(ns toolkit.experimental.meta
+(ns dj.toolkit.experimental.meta
   (:require [dj.toolkit :as tk])
   (:require [clojure.java.shell :as sh]))
 
