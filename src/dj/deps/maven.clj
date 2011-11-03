@@ -15,7 +15,8 @@
 ;; later add local repositories, grabbed from pom file
 (def repository-urls (map repository-url ["http://repo1.maven.org/maven2"
 					  "http://clojars.org/repo/"
-					  "http://alxa.sourceforge.net/m2"]))
+					  "http://alxa.sourceforge.net/m2"
+					  "http://build.clojure.org/snapshots/"]))
 
 (defrecord maven-dependency [name version group])
 
@@ -199,7 +200,7 @@ snapshot"
 			 ".jar"))
 	(do (println (str "Can't find "
 			  local-maven-metadata-file
-			  ".pom from local repository, searching in remote"))
+			  " from local repository, searching in remote"))
 	    (obtain-snapshot-maven dependency nil)))
       ;; obtain and (return xml-snapshot or return regular-snapshot)
       (loop [urls repository-urls]
