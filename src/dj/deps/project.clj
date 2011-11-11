@@ -19,23 +19,29 @@
 (defn project-name-to-file [project-name]
   (new-file system-root "usr/src/" project-name))
 
+(defn extract-project-dependencies [name]
+  (let [project-data (read-project (project-name-to-file name))
+	src-deps (map #(parse % :project-dependency) (:src-dependencies project-data))
+	jar-deps (map parse (:dependencies project-data))
+	native-deps (map #(parse % :native-dependency) (:native-dependencies project-data))]
+    (concat src-deps jar-deps native-deps)))
+
+(defn extract-project-exclusions [name]
+  (let [exclusion-data (-> name
+			   project-name-to-file
+			   read-project
+			   :exclusions)]
+    (map #(parse % :project-exclusion) exclusion-data)))
+
 (defrecord project-dependency [name]
   ADependency
   (obtain [this _]
 	  (new-file system-root "usr/src" name "src"))
   (depends-on [this]
-	      (let [project-data (read-project (project-name-to-file name))
-		    src-deps (map #(parse % :project-dependency) (:src-dependencies project-data))
-		    jar-deps (map parse (:dependencies project-data))
-		    native-deps (map #(parse % :native-dependency) (:native-dependencies project-data))]
-		(concat src-deps jar-deps native-deps)))
+	      (extract-project-dependencies name))
   (load-type [this] :src)
   (exclusions [this]
-	      (let [exclusion-data (-> name
-				       project-name-to-file
-				       read-project
-				       :exclusions)]
-		(map #(parse % :project-exclusion) exclusion-data))))
+	      (extract-project-exclusions name)))
 
 (defn pass-pom-data
   "grabs from cache if possible"
@@ -72,18 +78,10 @@
 		  :dir (get-path (new-file system-root "usr/src/"))))
 	    f))
   (depends-on [this]
-	      (let [project-data (read-project (project-name-to-file name))
-		    src-deps (map #(parse % :project-dependency) (:src-dependencies project-data))
-		    jar-deps (map parse (:dependencies project-data))
-		    native-deps (map #(parse % :native-dependency) (:native-dependencies project-data))]
-		(concat src-deps jar-deps native-deps)))
+	      (extract-project-dependencies name))
   (load-type [this] :src)
   (exclusions [this]
-	      (let [exclusion-data (-> name
-				       project-name-to-file
-				       read-project
-				       :exclusions)]
-		(map #(parse % :project-exclusion) exclusion-data))))
+	      (extract-project-exclusions name)))
 
 (defmethod parse :project-exclusion [obj & [_]]
 	   (let [id (first obj)

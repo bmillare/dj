@@ -38,10 +38,10 @@
     (swap! history conj f)
     f))
 
-(defn toog* [query files]
+(defn toog* [query files select-fn]
   (let [terms (map #(re-pattern (java.util.regex.Pattern/quote %)) (.split #" " query))]
     (filter (fn [path]
-	      (every? #(re-find % (.getPath path))
+	      (every? #(re-find % (select-fn path))
 		      terms))
 	    files)))
 
@@ -75,8 +75,11 @@
 
 (defonce current-directory (atom (tk/new-file "/home")))
 
+(defn files-in-folders [dirs]
+  (flatten (map #(recursive-ls %) dirs)))
+
 (defn user-space []
-  (flatten (map #(recursive-ls %) scan-directories)))
+  (files-in-folders scan-directories))
 
 ;; Public API
 
@@ -87,7 +90,7 @@
   ([query]
      (toog query user-space))
   ([query files-fn]
-     (let [results (toog* query (files-fn))]
+     (let [results (toog* query (files-fn) #(.getPath %))]
        (if (= (count results) 1)
 	 (first results)
 	 results))))

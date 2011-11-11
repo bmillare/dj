@@ -1,5 +1,6 @@
 (ns dj
   (:require [dj.toolkit :as tk])
+  (:require [dj.toolkit.experimental.meta :as djmeta])
   (:require [dj.classloader :as cl])
   (:require [dj.deps core project maven])
   (:require [dj.core]))
@@ -52,3 +53,28 @@
 			    "test/cljs"]))]
     (doseq [p paths]
       (add-to-classpath! p))))
+
+(defn obj-seq-print* [s type-name obj-str-fn]
+  (println (str type-name ": " (count s) " found"))
+  (doseq [x s]
+    (println (obj-str-fn x))))
+
+(defn usr-search
+  "search local repositories for files matching query"
+  [query]
+  (obj-seq-print* (djmeta/toog* query
+				(djmeta/files-in-folders [(tk/new-file dj.core/system-root "usr")])
+				#(.getPath %))
+		  "Files"
+		  #(.getPath %)))
+
+(defn local-jar-versions
+  "search local maven repositories for jars matching query"
+  [query]
+  (obj-seq-print* (djmeta/toog* (str query " jar")
+				(djmeta/files-in-folders [(tk/new-file dj.core/system-root "usr/maven")
+							  (tk/new-file dj.core/system-root "usr/native")])
+				#(.getName %))
+		  "jars"
+		  #(.getName %)))
+
