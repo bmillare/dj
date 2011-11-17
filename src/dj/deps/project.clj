@@ -68,7 +68,6 @@
   (exclusions [this]
 	      (pass-pom-data name dj.deps.maven/pom-extract-exclusions)))
 
-
 (defrecord git-dependency [name git-path]
   ADependency
   (obtain [this _]
@@ -76,6 +75,19 @@
 	    (when-not (.exists f)
 	      (sh "git" "clone" git-path
 		  :dir (get-path (new-file system-root "usr/src/"))))
+	    f))
+  (depends-on [this]
+	      (extract-project-dependencies name))
+  (load-type [this] :src)
+  (exclusions [this]
+	      (extract-project-exclusions name)))
+
+(defrecord custom-jar-dependency [name filename]
+  ADependency
+  (obtain [this _]
+	  (let [f (new-file system-root "usr/src" name filename)]
+	    (when-not (.exists f)
+	      (throw (Exception. (str "file " (.getPath f) " not found"))))
 	    f))
   (depends-on [this]
 	      (extract-project-dependencies name))
@@ -97,10 +109,16 @@
 			  (version-p d)))))
 
 (defmethod parse :project-dependency [name & [_]]
-	   (if (re-find #"http://|git://|https://" name)
-	     (let [[_ n] (re-find #"((?:\w|-|_)+)\.git" (last (.split #"/" name)))]
-	       (git-dependency. n name))
-	     (if (= "clojure" (first (.split #"/" name)))
-	       (source-contrib-dependency. name)
-	       (project-dependency. name))))
-
+	   (let [components (.split #"/" name)]
+	     (if (re-find #"http://|git://|https://" name)
+	      (let [[_ n] (re-find #"((?:\w|-|_)+)\.git" (last components))]
+		(git-dependency. n name))
+	      (if (= "clojure" (first components))
+		(source-contrib-dependency. name)
+		(let [foldername (apply str (interpose "/" (drop-last components)))
+		      filename (last components)]
+		  (if (and (not (empty? foldername))
+			   (not (empty? name))
+			   (.contains filename ".jar"))
+		    (custom-jar-dependency. foldername filename)
+		    (project-dependency. name)))))))
