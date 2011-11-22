@@ -58,9 +58,9 @@
 	    (when-not (.exists f)
 	      (let [clojure-folder (new-file system-root "usr/src/clojure")]
 		(when-not (.exists clojure-folder)
-		  (mkdir clojure-folder)))
-	      (sh "git" "clone" (str "git://github.com/" name ".git")
-		  :dir (get-path (new-file system-root "usr/src/clojure"))))
+		  (mkdir clojure-folder))
+		(sh "git" "clone" (str "git://github.com/" name ".git")
+		    :dir (get-path clojure-folder))))
 	    f))
   (depends-on [this]
 	      (pass-pom-data name dj.deps.maven/pom-extract-dependencies))

@@ -5,6 +5,7 @@
   (:use [dj.toolkit :only [rm new-file str-path]])
   (:use [clojure.java.shell :only [sh]]))
 
+;; only supports unix and require unzip to be installed
 (defn main
   "USAGE: dj update [<project-name>|clojure|dj]"
   [& [opt]]
