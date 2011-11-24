@@ -247,8 +247,8 @@
 
 (defn unjar [^java.io.File jar-file install-dir]
   (let [jar-file (java.util.jar.JarFile. jar-file)]
-    (for [^java.io.File entry (enumeration-seq (.entries jar-file))
-	  :let [^java.io.File f (new-file install-dir (.getName entry))]]
+    (doseq [^java.util.zip.ZipEntry entry (enumeration-seq (.entries jar-file))
+	    :let [^java.io.File f (new-file install-dir (.getName entry))]]
       (if (.isDirectory entry)
 	(.mkdirs f)
 	(with-open [in-stream (.getInputStream jar-file entry)

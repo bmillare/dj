@@ -5,7 +5,7 @@
   (:require [dj.net])
   (:use [dj.deps.core]))
 
-(defn repository-url
+(defn validate-repository-url
   "makes given repository address (string) ensures it is well formed"
   [repository]
   (if (.endsWith repository "/")
@@ -13,10 +13,10 @@
     (str repository "/")))
 
 ;; later add local repositories, grabbed from pom file
-(def repository-urls (map repository-url ["http://repo1.maven.org/maven2"
-					  "http://clojars.org/repo/"
-					  "http://alxa.sourceforge.net/m2"
-					  "http://build.clojure.org/snapshots/"]))
+(def repository-urls (atom (map validate-repository-url ["http://repo1.maven.org/maven2"
+							 "http://clojars.org/repo/"
+							 "http://alxa.sourceforge.net/m2"
+							 "http://build.clojure.org/snapshots/"])))
 
 (defrecord maven-dependency [name version group])
 
@@ -42,7 +42,7 @@
 									   repo-url)
 						       (catch Exception e
 							 nil)))
-						   repository-urls)
+						   @repository-urls)
 					   (map tk/get-name (tk/ls (dj.io/file
 								    repositories-directory
 								    "maven"
@@ -156,7 +156,7 @@
 				     (.getCause e))
 			(find-in-next-repo)
 			(throw (.getCause e)))))))]
-	  (download-jar-pom! repository-urls))))))
+	  (download-jar-pom! @repository-urls))))))
 
 ;; base locations
 ;;  url
@@ -203,7 +203,7 @@ snapshot"
 			  " from local repository, searching in remote"))
 	    (obtain-snapshot-maven dependency nil)))
       ;; obtain and (return xml-snapshot or return regular-snapshot)
-      (loop [urls repository-urls]
+      (loop [urls @repository-urls]
 	(if urls
 	  (let [remote-directory (str (first urls) let-relative-directory)]
 	    (if (dj.net/exists? remote-directory)

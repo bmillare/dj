@@ -40,8 +40,9 @@
 			      (str (dj.deps.maven/relative-directory dependency)
 				   (:name dependency) "-" (:version dependency)))]
     (when-not (.exists install-dir)
-      (unjar (new-file (dj.deps.maven/obtain-normal-maven dependency))
-		   install-dir))
+      (println install-dir)
+      (unjar (dj.toolkit/log (new-file (dj.deps.maven/obtain-normal-maven dependency)))
+	     install-dir))
     [(seq (ls (new-file install-dir "lib")))
      (let [native-dir (new-file install-dir
 				"native"

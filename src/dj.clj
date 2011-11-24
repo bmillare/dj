@@ -10,8 +10,15 @@
 (tk/import-fn #'cl/reload-class-file)
 (tk/import-fn #'dj.deps.maven/ls-repo)
 
-(defn get-repository-urls []
-  dj.deps.maven/repository-urls)
+(def repository-urls dj.deps.maven/repository-urls)
+
+(defn add-repository! [url-str]
+  (swap! repository-urls
+	 (fn [coll v]
+	   (if (some #{v} coll)
+	     coll
+	     (conj coll (dj.deps.maven/validate-repository-url v))))
+	 url-str))
 
 (defn add-to-classpath!
   "given file, a jar or a directory, adds it to classpath for classloader
@@ -42,6 +49,22 @@
 			:when r]
 		    r)]
        (cl/add-dependencies! classloader d-objs options))))
+
+(defn add-native!
+  "given a classloader (default is parent classloader), takes a list
+  of strings or project.clj native dependencies ie. [foo/bar
+  \"1.2.2\"], options passed to obtain-dependencies!"
+  ([dependencies]
+     (add-native! (.getParent (cl/get-current-classloader))
+			dependencies
+			{:verbose true :offline true}))
+  ([classloader dependencies options]
+     (cl/add-dependencies! classloader
+			   (for [d dependencies
+				 :let [r (dj.deps.core/parse d :native-dependency)]
+				 :when r]
+			     r)
+			   options)))
 
 (defn add-cljs-to-classpath! []
   (let [cljs-dir (tk/new-file dj.core/system-root "usr/src/clojurescript")
