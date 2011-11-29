@@ -6,3 +6,4 @@ usr/
 lib/
 classes/
 var/
+src/scripts/*.class

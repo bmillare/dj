@@ -18,6 +18,20 @@
 				     (or (namespace id)
 					 (name id)))))
 
+;; dj assumes that the structure of the native jar is a particular
+;; format, which is used by clojars. The jars that contain native
+;; components have 3 directories, lib, which has jars, META-INF,
+;; contains the manifest, and native, which contains platform folders,
+;; in each platform folder, there is the architecture, and in each
+;; architecture, is the library files. Each library file must have the
+;; prefix "lib" and then the library name, and then the platform
+;; dependent suffix. Also, currently, there needs to be the
+;; corresponding pom file in the maven repository of the same
+;; folder. I'm not sure how to fix this at the moment. I'm basically
+;; using the maven behavior for dependency management and the native
+;; repository for extracting the files to. Probably the pom file
+;; should be associated with the native repo items.
+
 (defn get-native!
   "check if native jar exists in local native repository, else,
   downloads and unjars jar in native directory, returns lib native files"
