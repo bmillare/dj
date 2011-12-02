@@ -1,4 +1,4 @@
-(ns dj.toolkit.experimental.peg
+(ns dj.toolkit.peg
   (:refer-clojure :exclude [seq]))
 
 ;; Note: This file is written in a pseudo literate programming (LP)
@@ -241,8 +241,9 @@
 ;; Our default trampoline wrapper
 (defn parse
   "calls the parser on input with default continuation functions. On
-  succeeds, returns a vector of the result and the remaining input. On
-  fail, throws and exception with the current result and remaining input."
+  success, returns a vector of the result and the remaining input. On
+  failure, throws and exception with the current result and remaining
+  input."
   [parser input]
   (trampoline parser
 	      input
