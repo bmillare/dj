@@ -35,9 +35,12 @@
       (if (.lookingAt m)
 	;; .group returns matched string
 	;; .end returns index of end character
-	(pass (list (.group m)) (subs input (.end m)))
+	(pass (.group m) (subs input (.end m)))
 	(fail nil input)))))
 
+;; The seq' parser generator returns a parser that calls pass only if
+;; all parsers succeed. The state that will be passed to pass will be
+;; a sequence of the states returned by all the other parsers.
 (defn seq'
   "returns a parser that chains parsers"
   ([m n]
@@ -50,11 +53,28 @@
 	   n
 	   m-input
 	   (fn [n-pass-state n-input]
-	     (pass (concat m-pass-state n-pass-state) n-input))
+	     (pass [m-pass-state n-pass-state] n-input))
 	   fail))
 	fail)))
   ([m n & args]
-     (reduce seq' m (list* n args))))
+     ;; The more than 2 parser case is tricky because we want the
+     ;; passed state to be a flat vector and not nested. We need to
+     ;; change the way we join our states after we call seq' since
+     ;; that state is already a vector. Therefore, we now call conj.
+     (let [seq'' (fn [m' n']
+		   (fn [input pass fail]
+		     (bounce
+		      m'
+		      input
+		      (fn [m'-pass-state m'-input]
+			(bounce
+			 n'
+			 m'-input
+			 (fn [n'-pass-state n'-input]
+			   (pass (conj m'-pass-state n'-pass-state) n'-input))
+			 fail))
+		      fail)))]
+       (reduce seq'' (seq' m n) args))))
 
 (defn choice
   "returns a parser that calls success on the first succeeded parser"
@@ -77,22 +97,55 @@
   "returns a parser that always succeeds on n number of calls to parser x on input"
   [x]
   (fn [input pass fail]
-    (letfn [(continue [old-pass-state old-input]
+    ;; Like in the seq' case, we have to correctly accumulate
+    ;; state. Here on the first successful parsing we put the state in
+    ;; a vector. From then on, all successful parses gets conjed onto
+    ;; that original vector.
+    (letfn [(first-continue [old-pass-state old-input]
+			    (bounce
+			     x
+			     old-input
+			     (fn [new-pass-state new-input]
+			       (continue [old-pass-state new-pass-state] new-input))
+			     (fn [new-pass-state new-input]
+			       (pass [old-pass-state] new-input))))
+	    (continue [old-pass-state old-input]
 		      (bounce
 		       x
 		       old-input
 		       (fn [new-pass-state new-input]
-			 (continue (concat old-pass-state new-pass-state) new-input))
+			 (continue (conj old-pass-state new-pass-state) new-input))
 		       (fn [new-pass-state new-input]
-			 (pass (concat old-pass-state new-pass-state) new-input))))]
+			 (pass old-pass-state new-input))))]
       (bounce
        x
        input
-       continue
+       first-continue
        pass))))
 
 (defn plus [x]
-  (seq' x (star x)))
+  (fn [input pass fail]
+    (letfn [(first-continue [old-pass-state old-input]
+			    (bounce
+			     x
+			     old-input
+			     (fn [new-pass-state new-input]
+			       (continue [old-pass-state new-pass-state] new-input))
+			     (fn [new-pass-state new-input]
+			       (pass [old-pass-state] new-input))))
+	    (continue [old-pass-state old-input]
+		      (bounce
+		       x
+		       old-input
+		       (fn [new-pass-state new-input]
+			 (continue (conj old-pass-state new-pass-state) new-input))
+		       (fn [new-pass-state new-input]
+			 (pass old-pass-state new-input))))]
+      (bounce
+       x
+       input
+       first-continue
+       fail))))
 
 (defn not?
   "negative lookahead, returns parser that parses without consuming input"
@@ -137,6 +190,18 @@
      x
      input
      (wrap-fn old-pass)
+     fail)))
+
+(defn state-transform
+  "returns a wrapped version of parser p that modifies state before
+  passing it to the pass function"
+  [p state-transformer-fn]
+  (fn [input pass fail]
+    (bounce
+     p
+     input
+     (fn [state remaining-input]
+       (pass (state-transformer-fn state) remaining-input))
      fail)))
 
 #_ (do
