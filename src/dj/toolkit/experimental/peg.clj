@@ -1,24 +1,69 @@
 (ns dj.toolkit.experimental.peg
-  (:require dj))
+  (:refer-clojure :exclude [seq]))
 
-;; ()
-;; +*/
-;; 0-9
-;; letters
+;; Note: This file is written in a pseudo literate programming (LP)
+;; style. Instead of relying on the LP tools to expand and reorganize
+;; the code, I rely on the reader to navigate the code using the
+;; search function :)
 
-;; terminals and non-terminals
+;; PEG: This a functional Parser Expression Grammar library designed
+;; for writing composable parsers.
 
-;; (1) The following utilities are parser generators. (2) The
-;; generators accept configuration arguments. (3) The parser accepts
-;; input, success/fail functions, and success/fail function state. (4)
-;; The parser will then return a closure (a function that calls the
-;; other parsers depending on the parsers input or the success/fail
-;; functions) so that trampoline can be used and there won't be a
-;; stack overflow. (4) success/fail functions accept the string that
-;; failed or succeeded, the remaining input and the current maintained
-;; state
+;; To understand the model, there are 4 types of functions in this
+;; library you need to understand:
 
-;; trampoline will be called only on nonterminals
+;; 1. Parsers Generators
+;; 2. Parsers
+;; 3. Success and Fail continuation functions
+;; 4. Continuation wrappers
+
+;; You will also use the trampoline wrappers, but they are simply a
+;; convenience function for calling the parsers.
+
+;; To start, lets look at a simple parser generator, token.
+
+(defn token
+;; This is the first example parser generator. Given a regular
+;; expression, it returns a parser that will succeed if there is a
+;; match (see .lookingAt to understand exactly what constitutes a
+;; match), else it will fail. To succeed or fail, means to call
+;; succeed or call fail. This continuation style programming, and
+;; allows us to easily modify our control flow. I call the parser that
+;; token returns, a 'Basic' parser, since it does not delegate to
+;; other '2. Parsers', in other words it does not delegate to other
+;; parsers that conform to our argument signatures. This means we must
+;; convert what it means for a java re matcher to succeed and fail, to
+;; our convention.
+  "returns parser that looks for token that matches re"
+  [^java.util.regex.Pattern re]
+  (fn [input succeed fail]
+    (let [m (re-matcher re input)]
+      ;; We do the translation using .lookingAt, which attempts to
+      ;; match the input sequence, starting at the beginning of the
+      ;; region, against the pattern. It does not require the whole
+      ;; input match, but only from the start a match can be found. It
+      ;; returns true if it succeeds, else false. We take this
+      ;; information and then call the appropriate continuation.
+      (if (.lookingAt m)
+	;; Another important aspect of parsers is how they manage the
+	;; results of the parsing. On success, this parser will return
+	;; the matched string using .group. We must also manage what
+	;; input we consumed, and return what remains to be consumed.
+	
+	(succeed (.group m)             ;; .group returns the matched string
+		 (subs input (.end m))) ;; .end returns the index of the end character
+	(fail nil input)))))
+
+;; This PEG library uses clojure's trampolines to limit our
+;; consumption of the memory stack. To do this, we need to change the
+;; way we call our functions. Instead of directly calling the
+;; function, we return a closure which calls then calls the
+;; function. Trampoline will automatically call the next closure as
+;; appropriate. To make it more clear that we are returning a closure
+;; for trampoline, and not a parser or continuation, I've written a
+;; macro, bounce, that does the closure wrapping. Semantically, this
+;; is a good name, since we effectively are bouncing on the trampoline
+;; to make the function call.
 
 (defmacro bounce
   "use instead of calling a function, this will create a closure for
@@ -26,121 +71,116 @@
   [f & form]
   `(fn [] (~f ~@form)))
 
-(defn token
-  "returns parser that looks for token that matches re"
-  [^java.util.regex.Pattern re]
-  (fn [input pass fail]
-    (let [m (re-matcher re input)]
-      ;; .lookingAt returns true if re matches input
-      (if (.lookingAt m)
-	;; .group returns matched string
-	;; .end returns index of end character
-	(pass (.group m) (subs input (.end m)))
-	(fail nil input)))))
+;; Although this does reduce our stack consumption, it does clutter
+;; our code. As a compromise, I will only call bounce on
+;; nonterminals. We will see its first usage in our first delegating
+;; parser, seq
 
-;; The seq' parser generator returns a parser that calls pass only if
-;; all parsers succeed. The state that will be passed to pass will be
-;; a sequence of the states returned by all the other parsers.
-(defn seq'
-  "returns a parser that chains parsers"
+(defn seq
+ "The seq parser generator returns a parser that succeeds only if all
+ parsers succeed. The result that will be passed to succeed will be a
+ vector of the results returned by all the other parsers."
   ([m n]
-     (fn [input pass fail]
+     (fn [input succeed fail]
        (bounce
 	m
 	input
-	(fn [m-pass-state m-input]
+	;; If we succeed, we check to see if the next parser succeeds.
+	(fn [m-result m-rest-input]
 	  (bounce
 	   n
-	   m-input
-	   (fn [n-pass-state n-input]
-	     (pass [m-pass-state n-pass-state] n-input))
+	   m-rest-input
+	   (fn [n-result n-rest-input]
+	     ;; The result is a vector of all the results
+	     (succeed [m-result n-result] n-rest-input))
 	   fail))
 	fail)))
   ([m n & args]
      ;; The more than 2 parser case is tricky because we want the
-     ;; passed state to be a flat vector and not nested. We need to
-     ;; change the way we join our states after we call seq' since
-     ;; that state is already a vector. Therefore, we now call conj.
-     (let [seq'' (fn [m' n']
-		   (fn [input pass fail]
+     ;; passed result to be a flat vector and not nested. We need to
+     ;; change the way we join our results after we call seq since
+     ;; that result is already a vector. Therefore, we now call conj.
+     (let [seq' (fn [m' n']
+		   (fn [input succeed fail]
 		     (bounce
 		      m'
 		      input
-		      (fn [m'-pass-state m'-input]
+		      (fn [m'-result m'-rest-input]
 			(bounce
 			 n'
-			 m'-input
-			 (fn [n'-pass-state n'-input]
-			   (pass (conj m'-pass-state n'-pass-state) n'-input))
+			 m'-rest-input
+			 (fn [n'-result n'-rest-input]
+			   (succeed (conj m'-result n'-result) n'-rest-input))
 			 fail))
 		      fail)))]
-       (reduce seq'' (seq' m n) args))))
+       (reduce seq' (seq m n) args))))
 
 (defn choice
   "returns a parser that calls success on the first succeeded parser"
   ([m n]
-     (fn [input pass fail]
+     (fn [input succeed fail]
        (bounce
 	m
 	input
-	pass
+	succeed
 	(fn [_ _]
 	  (bounce
 	   n
 	   input
-	   pass
+	   succeed
 	   fail)))))
   ([m n & args]
      (reduce choice m (list* n args))))
 
 (defn star
-  "returns a parser that always succeeds on n number of calls to parser x on input"
+  "returns a parser that always succeeds on n number of calls to
+  parser x on input"
   [x]
-  (fn [input pass fail]
-    ;; Like in the seq' case, we have to correctly accumulate
+  (fn [input succeed fail]
+    ;; Like in the seq case, we have to correctly accumulate
     ;; state. Here on the first successful parsing we put the state in
     ;; a vector. From then on, all successful parses gets conjed onto
     ;; that original vector.
-    (letfn [(first-continue [old-pass-state old-input]
+    (letfn [(first-continue [old-succeed-state old-input]
 			    (bounce
 			     x
 			     old-input
-			     (fn [new-pass-state new-input]
-			       (continue [old-pass-state new-pass-state] new-input))
-			     (fn [new-pass-state new-input]
-			       (pass [old-pass-state] new-input))))
-	    (continue [old-pass-state old-input]
+			     (fn [new-succeed-state new-input]
+			       (continue [old-succeed-state new-succeed-state] new-input))
+			     (fn [new-succeed-state new-input]
+			       (succeed [old-succeed-state] new-input))))
+	    (continue [old-succeed-state old-input]
 		      (bounce
 		       x
 		       old-input
-		       (fn [new-pass-state new-input]
-			 (continue (conj old-pass-state new-pass-state) new-input))
-		       (fn [new-pass-state new-input]
-			 (pass old-pass-state new-input))))]
+		       (fn [new-succeed-state new-input]
+			 (continue (conj old-succeed-state new-succeed-state) new-input))
+		       (fn [new-succeed-state new-input]
+			 (succeed old-succeed-state new-input))))]
       (bounce
        x
        input
        first-continue
-       pass))))
+       succeed))))
 
 (defn plus [x]
-  (fn [input pass fail]
-    (letfn [(first-continue [old-pass-state old-input]
+  (fn [input succeed fail]
+    (letfn [(first-continue [old-succeed-state old-input]
 			    (bounce
 			     x
 			     old-input
-			     (fn [new-pass-state new-input]
-			       (continue [old-pass-state new-pass-state] new-input))
-			     (fn [new-pass-state new-input]
-			       (pass [old-pass-state] new-input))))
-	    (continue [old-pass-state old-input]
+			     (fn [new-succeed-state new-input]
+			       (continue [old-succeed-state new-succeed-state] new-input))
+			     (fn [new-succeed-state new-input]
+			       (succeed [old-succeed-state] new-input))))
+	    (continue [old-succeed-state old-input]
 		      (bounce
 		       x
 		       old-input
-		       (fn [new-pass-state new-input]
-			 (continue (conj old-pass-state new-pass-state) new-input))
-		       (fn [new-pass-state new-input]
-			 (pass old-pass-state new-input))))]
+		       (fn [new-succeed-state new-input]
+			 (continue (conj old-succeed-state new-succeed-state) new-input))
+		       (fn [new-succeed-state new-input]
+			 (succeed old-succeed-state new-input))))]
       (bounce
        x
        input
@@ -148,87 +188,67 @@
        fail))))
 
 (defn not?
-  "negative lookahead, returns parser that parses without consuming input"
+  "negative lookahead, returns parser that parses without consuming
+  input"
   [x]
-  (fn [input pass fail]
+  (fn [input succeed fail]
     (bounce
      x
      input
      (fn [_ _]
        (fail nil input))
      (fn [_ _]
-       (pass nil input)))))
+       (succeed nil input)))))
 
 (defn and?
   "and lookahead, returns parser that parses without consuming input"
   [x]
-  (fn [input pass fail]
+  (fn [input succeed fail]
     (bounce
      x
      input
      (fn [_ _]
-       (pass nil input))
+       (succeed nil input))
      (fn [_ _]
        (fail nil input)))))
 
 (defn opt
   "returns parser that optionally accepts input"
   [x]
-  (fn [input pass fail]
+  (fn [input succeed fail]
     (bounce
      x
      input
-     pass
+     succeed
      (fn [_ _]
-       (pass nil input)))))
+       (succeed nil input)))))
 
-(defn wrap-pass
-  "wrap pass continuation with code"
-  [x wrap-fn]
-  (fn [input old-pass fail]
-    (bounce
-     x
-     input
-     (wrap-fn old-pass)
-     fail)))
+;; The peg library is designed like Ring. The following functions are
+;; middleware, where they return a new parser
 
-(defn state-transform
-  "returns a wrapped version of parser p that modifies state before
-  passing it to the pass function"
-  [p state-transformer-fn]
-  (fn [input pass fail]
+(defn alter-result
+  "returns a wrapped version of parser p that modifies result before
+  passing it to the succeed function"
+  [p result-alter-fn]
+  (fn [input succeed fail]
     (bounce
      p
      input
-     (fn [state remaining-input]
-       (pass (state-transformer-fn state) remaining-input))
+     (fn [result rest-input]
+       (succeed (result-alter-fn result) rest-input))
      fail)))
 
-#_ (do
-     (let [printer (fn [outcome]
-		     (fn [state input]
-		       (println outcome)
-		       (println "Matches:" state)
-		       (println "Remaining Input:" input)))
-	   f (token #"function")
-	   n (token #"\d")
-	   e (token #"bend")]
-       (trampoline (seq' f (star n) (opt e)) "function34end" (printer "success") (printer "fail"))
-       )
-     (let [printer (fn [outcome]
-		     (fn [state input]
-		       (println outcome)
-		       (println "Matches:" state)
-		       (println "Remaining Input:" input)))
-	   value (wrap-pass (token #"\d+")
-			    (fn [pass]
-			      (fn [state input]
-				(pass (list (Integer/parseInt (first state))) input))))
-	   sumo (wrap-pass (seq' value (token #"\+") value)
-			   (fn [pass]
-			     (fn [state input]
-			       (pass (list (+ (first state)
-					      (last state))) input))))]
-       (trampoline sumo "a+4" (printer "success") (printer "fail"))
-       )
-     )
+;; Our default trampoline wrapper
+(defn parse
+  "calls the parser on input with default continuation functions. On
+  succeeds, returns a vector of the result and the remaining input. On
+  fail, throws and exception with the current result and remaining input."
+  [parser input]
+  (trampoline parser
+	      input
+	      (fn [result rest-input]
+		[result rest-input])
+	      (fn [result rest-input]
+		(throw (Exception. (str "Parse failed with result: "
+					result " and remaining input: "
+					rest-input))))))
