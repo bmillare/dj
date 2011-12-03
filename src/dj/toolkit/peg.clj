@@ -140,6 +140,11 @@
 		      fail)))]
        (reduce seq' (seq m n) args))))
 
+;; I won't go into detail about the remaining PEG operators, choice,
+;; star, plus, not?, and?, and opt since you can learn about the
+;; purpose on wikipedia. I may mention programming issues that came up
+;; though.
+
 (defn choice
   "returns a parser that calls succeed on the first succeeded parser"
   ([m n]
@@ -212,6 +217,11 @@
        first-continue
        fail))))
 
+;; Note that not? and and? do not consume input. I've decided to not
+;; pass any useful result information to the continuation functions
+;; since I can't think of pratical use for this. If you desire this,
+;; you can discuss this with me. Also you can always write new look
+;; ahead parser generators.
 (defn not?
   "negative lookahead, returns parser that parses without consuming
   input"
@@ -248,23 +258,10 @@
      (fn [_ _]
        (succeed nil input)))))
 
-;; The peg library is designed like Ring. The following functions are
-;; middleware, where they return a new parser
-
-(defn alter-result
-  "returns a wrapped version of parser p that modifies result before
-  passing it to the succeed function"
-  [p result-alter-fn]
-  (fn [input succeed fail]
-    (bounce
-     p
-     input
-     (fn [result rest-input]
-       (succeed (result-alter-fn result) rest-input))
-     fail)))
-
-;; Our default trampoline wrapper
 (defn parse
+;; This the default trampoline wrapper. You use this function to
+;; invoke a parser at the toplevel.
+;; Example:  (peg/parse (peg/token #"\d+") "234")
   "calls the parser on input with default continuation functions. On
   success, returns a vector of the result and the remaining input. On
   failure, throws and exception with the current result and remaining
@@ -278,3 +275,27 @@
 		(throw (Exception. (str "Parse failed with result: "
 					result " and remaining input: "
 					rest-input))))))
+
+;; The peg library takes some inspiration from Ring. The function
+;; alter-result is like middleware in that it wraps the old parser, do
+;; some data manipulation, and return a new parser.
+
+(defn alter-result
+;; To me this is the most useful continuation wrapper. One good
+;; example, you want to parse a number, so you write a token parser
+;; with (peg/token #"\d+"). You want the result to be an actual
+;; number, so you wrap it with java's integer
+;; parser. (peg/alter-result (peg/token #"\d+") #(Integer/parseInt %))
+;; Now, when you invoke it, succeed gets passed an Integer instead of
+;; a string.
+  "returns a wrapped version of parser p that modifies result before
+  passing it to the succeed function"
+  [p result-alter-fn]
+  (fn [input succeed fail]
+    (bounce
+     p
+     input
+     (fn [result rest-input]
+       (succeed (result-alter-fn result) rest-input))
+     fail)))
+
