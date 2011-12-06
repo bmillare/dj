@@ -27,7 +27,10 @@
 ;; the problem of indirect left recursion. This library makes no
 ;; attempt to solve these problems automatically. I assume that the
 ;; user of the library will be aware of these issues and rework their
-;; grammars as appropriate.
+;; grammars as appropriate. Another side effect of using recursive
+;; functions is the consumption of stack (since I make no assumption
+;; that you are using clojure on a tail call optimizing version of the
+;; JVM). I solve this problem using clojure's trampolines.
 
 ;; To understand the programming model, there are 4 types of functions
 ;; in this library you need to understand:
@@ -39,6 +42,25 @@
 
 ;; You will also use the trampoline wrappers, but they are simply a
 ;; convenience function for calling the parsers.
+
+;; Overview:
+
+;; This document should flow linearly from start to finish. At the end
+;; of the document, make sure you should understand token, any of the
+;; parser/parser generators, alter-result, and parse.
+
+;; Token is our model terminal parser.
+
+;; The parser generators/parsers are the bread and butter for users of
+;; this library. Those are the functions you will call to construct
+;; your grammars.
+
+;; alter-result is the default continuation wrapper that lets us
+;; actually do useful work after parsing. Users of this library will
+;; need to interleave this to different parts of their sub-parsers.
+
+;; Finally, parse is the main invocation point that wraps a trampoline
+;; call and provides default success and fail continuations.
 
 ;; To start, lets look at a simple parser generator, token.
 
@@ -75,14 +97,27 @@
 		 (subs input (.end m))) ;; .end returns the index of the end character
 	(fail nil input)))))
 
-;; This PEG library uses clojure's trampolines to limit our
-;; consumption of the memory stack. To do this, we need to change the
-;; way we call our functions. Instead of directly calling the
-;; function, we return a closure which then calls the function. When
-;; you use trampoline to invoke our parsers, it will automatically
-;; call the next closure returned by the parser until the closures no
-;; longer returns another closure. This will happen when our highest
-;; most continuation function is called.
+;; NOTE: On writing your own terminal parsers. It's very easy to write
+;; your own terminal parsers. In the above example I treat a string as
+;; a sequence of regular expression matches. That's a little bit more
+;; high level than just treating the string as a sequence of
+;; characters. The later may be simpler, but the former has advantages
+;; in that you can usually parse text more efficiently and it is
+;; easier to express common idioms in regular expressions. This
+;; library is general in that if you write your own terminal parsers
+;; on different input types like number sequences, the non-terminal
+;; parsers should "just work" on them.
+
+;; As mentioned before, functional parsers can consume a lot of stack
+;; on non tail call optimizing compilers. This PEG library uses
+;; clojure's trampolines to limit our consumption of the memory
+;; stack. To do this, we need to change the way we call our
+;; functions. Instead of directly calling the function, we return a
+;; closure which then calls the function. When you use trampoline to
+;; invoke our parsers, it will automatically call the next closure
+;; returned by the parser until the closures no longer returns another
+;; closure. This will happen when our highest most continuation
+;; function is called.
 
 ;; To make it more clear that we are returning a closure for
 ;; trampoline, and not a parser or continuation, I've written a macro,
@@ -259,22 +294,28 @@
        (succeed nil input)))))
 
 (defn parse
-;; This the default trampoline wrapper. You use this function to
-;; invoke a parser at the toplevel.
-;; Example:  (peg/parse (peg/token #"\d+") "234")
+;; This is the default trampoline wrapper. You use this function to
+;; invoke a parser at the toplevel.  Example: (peg/parse (peg/token
+;; #"\d+") "234")
   "calls the parser on input with default continuation functions. On
   success, returns a vector of the result and the remaining input. On
   failure, throws and exception with the current result and remaining
-  input. Uses trampolines underneath to limit stack consumption."
-  [parser input]
-  (trampoline parser
-	      input
-	      (fn [result rest-input]
-		[result rest-input])
-	      (fn [result rest-input]
-		(throw (Exception. (str "Parse failed with result: "
-					result " and remaining input: "
-					rest-input))))))
+  input. Uses trampolines underneath to limit stack consumption. You
+  can also supply your own succeed and fail continuation functions."
+  ([parser input]
+     (trampoline parser
+		 input
+		 (fn [result rest-input]
+		   [result rest-input])
+		 (fn [result rest-input]
+		   (throw (Exception. (str "Parse failed with result: "
+					   result " and remaining input: "
+					   rest-input))))))
+  ([parser input succeed fail]
+     (trampoline parser
+		 input
+		 succeed
+		 fail)))
 
 ;; The peg library takes some inspiration from Ring. The function
 ;; alter-result is like middleware in that it wraps the old parser, do
