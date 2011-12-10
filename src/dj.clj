@@ -101,3 +101,6 @@
 		  "jars"
 		  #(.getName %)))
 
+(defn resource-as-str [str-path]
+  (let [is (.getResourceAsStream (get-current-classloader) str-path)]
+    (apply str (map char (take-while #(not= % -1) (repeatedly #(.read is)))))))
