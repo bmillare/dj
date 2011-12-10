@@ -19,6 +19,23 @@
 	       "")
 	 (interpose "/" (filter #(not (empty? %)) (mapcat #(.split (str %) "/") (list* parent children))))))
 
+(defn duplicates
+  "given a sequable list, returns a vector of the duplicate entries in
+  the order that they were found"
+  [s]
+  (loop [ns s
+	 test #{}
+	 duplicates []]
+    (if-let [x (first ns)]
+      (if (test x)
+	(recur (next ns)
+	       test
+	       (conj duplicates x))
+	(recur (next ns)
+	       (conj test x)
+	       duplicates))
+      duplicates)))
+
 (defprotocol Ipoop
   "Behave like clojure.core/spit but generically to any destination"
   (poop [dest txt] [dest txt append] "send data to file"))
