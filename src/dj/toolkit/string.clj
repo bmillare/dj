@@ -23,3 +23,22 @@
       (if (.find m)
 	(recur (conj matches (.group m)))
 	matches))))
+
+(defn substring
+  "extends builtin subs to have negative indexes. A negative index
+  will implicitly mean "
+  ([s start end]
+     (let [s-size (count s)
+	   s-idx (if (< start 0)
+		   (+ s-size start)
+		   start)
+	   e-idx (if (< end 0)
+		   (+ s-size end)
+		   end)]
+       (subs s s-idx e-idx)))
+  ([s start]
+     (let [s-size (count s)
+	   s-idx (if (< start 0)
+		   (+ s-size start)
+		   start)]
+       (subs s s-idx))))

@@ -153,7 +153,8 @@
 	   (fn [n-result n-rest-input]
 	     ;; The result is a vector of all the results
 	     (succeed [m-result n-result] n-rest-input))
-	   fail))
+	   (fn [_ _]
+	     (fail nil input))))
 	fail)))
   ([m n & args]
      ;; The more than 2 parser case is tricky because we want the
@@ -171,7 +172,8 @@
 			 m'-rest-input
 			 (fn [n'-result n'-rest-input]
 			   (succeed (conj m'-result n'-result) n'-rest-input))
-			 fail))
+			 (fn [_ _]
+			   (fail nil input))))
 		      fail)))]
        (reduce seq' (seq m n) args))))
 
