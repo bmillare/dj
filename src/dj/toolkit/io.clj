@@ -1,5 +1,10 @@
 (in-ns 'dj.toolkit)
 
+(defn- sh-exception [result]
+  (if (= (:exit result) 0)
+    nil
+    (throw (Exception. (:err result)))))
+
 (defn- shify [args]
   (apply str (interpose " " args)))
 
@@ -100,7 +105,7 @@
   Ipoop
   (poop ([this txt append]
 	   (if append
-	     (sh/sh "sh" "-c" (str "cat - >> " (.getPath this)) :in txt)
+	     (sh-exception (sh/sh "sh" "-c" (str "cat - >> " (.getPath this)) :in txt))
 	     (spit this txt)))
 	([this txt]
 	   (spit this txt)))
@@ -173,7 +178,10 @@
 	(ssh username server port (str "cat - > " path) :in txt))
   Ieat
   (eat [dest]
-       (:out (ssh username server port (shify ["cat" path]))))
+       (let [result (ssh username server port (shify ["cat" path]))]
+	 (if (zero? (:exit result))
+	   (:out result)
+	   (throw (Exception. (:err result))))))
   Imkdir
   (mkdir [dest]
 	 (if (zero? (:exit (ssh username server port (str "mkdir -p " path))))
@@ -190,7 +198,8 @@
 	       nil
 	       (.split ^String ls-str "\n")))))
   Irm
-  (rm [target] (ssh username server port (shify ["rm" "-rf" path])))
+  (rm [target] (sh-exception
+		(ssh username server port (shify ["rm" "-rf" path]))))
   Irelative-to
   (relative-to [folder path]
 	       (remote-file. (str-path (:path folder) path)
@@ -261,6 +270,30 @@
 
 (defmethod cp [remote-file remote-file] [in out]
 	   (throw (Exception. "not implemented")))
+
+(defmulti cp-contents #(vector (type %1) (type %2)))
+
+(defmethod cp-contents [java.io.File java.io.File] [^java.io.File in ^java.io.File out]
+	   (sh-exception
+	    (sh/sh "sh" "-c" (str "cp -r "
+				  (.getCanonicalPath in) "/* "
+				  (.getCanonicalPath out)))))
+
+(defmethod cp-contents [remote-file java.io.File] [in ^java.io.File out]
+	   (let [{:keys [path username server port]} in]
+	     (sh-exception
+	      (sh/sh "sh" "-c" (str "scp -r -P " port " "
+				    username "@" server ":"
+				    path "/* "
+				    (.getCanonicalPath out))))))
+
+(defmethod cp-contents [java.io.File remote-file] [^java.io.File in out]
+	   (let [{:keys [path username server port]} out]
+	     (sh-exception
+	      (sh/sh "sh" "-c" (str "scp -r -P " port " "
+				    (.getCanonicalPath in) "/* "
+				    username "@" server ":"
+				    path)))))
 
 (defn unjar [^java.io.File jar-file install-dir]
   (let [jar-file (java.util.jar.JarFile. jar-file)]

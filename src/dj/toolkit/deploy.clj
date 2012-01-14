@@ -1,5 +1,6 @@
 (ns dj.toolkit.deploy
   (:require [clojure.set :as set])
+  (:require [clojure.java.shell :as sh])
   (:require [dj.toolkit :as tk]))
 
 ;; deploy - A library for building, installing, and running software
@@ -8,37 +9,52 @@
 ;; Model:
 
 ;; worker - computer, something capable of storing files and
-;; performing work
+;; performing work. Every worker must have a directory for 'deploy' to
+;; work with. This will be aliased as 'deploy-dir'. This directory
+;; must have a file 'package-index.clj' (described below), a 'repo'
+;; directory, for a common place (but not limited to) to store
+;; packages, and a 'tmp' directory, for jobs to safely, store
+;; intermediates and results.
 
-;; worker-ref - a reference to the machine, can be used to access
-;; package-index, work load, submit, etc. Using a remote file is
-;; insufficient since we need to send commands, not just files.
+;; path/[package-index.clj, repo, tmp]
 
-;; package - a folder containing files and a metadata file containing
-;; the runtime dependencies. Installing it should only require copying
-;; the files and updating the package-index. The name of the folder
-;; does not matter, only its contents.
+;; package - a folder containing files and a metadata file
+;; (package.clj) containing the runtime dependencies, name, group,
+;; version, and more (see below for full spec). Installing it should
+;; only require copying the files and updating the package-index. The
+;; name of the folder does not matter, only its contents.
+
+;;; Package spec
+;; {:name, :group, :version, :runtime-dependencies, :external-paths -
+;; for meta packages that point to files already present on worker,
+;; :methods - leads to another map, which has keys bound to specific
+;; operations. The :executable key is the single package dir relative
+;; path to a default executable}
+
+;;; Package methods
+;; In order to prepare for future functionality, the :methods key is
+;; available in the package spec. We can add namespaced methods, which
+;; is a map of whatever you want. The intention is to provide an
+;; extensible bed for adding functionality.
 
 ;; package-id - an identifier that is 1-1 to a particular package
 
-;; package-index - each worker has a package index, which has a
-;; package -> install path, map. This file is stored on the worker.
+;; package-index.clj - each worker has a package index, which has a
+;; package{name and group only} -> version -> install path, nested
+;; map. This file is stored on the worker.
 
 ;; dependency - when a package needs to declare a dependency, it will
-;; return this type. This type implements a pkg-accept? interface,
-;; which accepts a pid, and returns true if pid is acceptable,
-;; otherwise nil.
+;; return a map with name, group, and version-classifier. The version
+;; will be a type implements a version-accept? interface, which
+;; accepts a version, and returns true if version is acceptable,
+;; otherwise nil. The reason to do this is for security. There aren't
+;; any forms that are evaluated, only reader loading of data types.
 
-;; builder - a function that accepts no arguments. It builds a package
-;; and returns its path
+;; builder - a function that accepts a dependency and returns the
+;; package path or fails and instead calls its continuation with the
+;; dependency passed. This continuation exists via a closure.
 
-;; builder-factory - accepts a pid and returns a respective builder or
-;; fails. Since we typically will be making a request from a tree of
-;; builder-factories, and builders can succeed or fail, continuation
-;; passing style might be useful here. This way we don't have to
-;; interpret the return value.
-
-;; basic builder-factories:
+;;; basic builder types:
 ;; -package cache, local or remote
 ;; -builder cache
 ;; -from sources
@@ -46,219 +62,244 @@
 
 ;; -------------------------------------------------------------------
 
-;; The work-dir function is needed to build folders on a machine that
-;; is unique within a parent folder.
-(defn work-dir
+(defn durable-ref
+  "returns a ref with a watcher that writes to file contents of ref as
+it changes. Write file is considered a 'cache' in that it will try to
+be up to date as much as possible, but may occasionaly be out of
+date (dirty). The implementation will try to update the file as much
+as possible without slowing down the ref. Also takes a default value,
+where it will create a file if it doesn't exist, otherwise it will not
+overwrite the value."
+  ([file-path default-value]
+     (let [^java.io.File f (tk/new-file file-path)]
+       (when-not (.exists f)
+	 (tk/poop f
+		  (binding [*print-dup* true]
+		    (prn-str default-value))))
+       (durable-ref file-path)))
+  ([file-path]
+     (let [^java.io.File f (tk/new-file file-path)
+	   writer-queue (agent nil)]
+       ;; When the agent starts writing, the cache is marked clean
+
+       ;; When the ref changes, a call to the writer is made. The cache
+       ;; is dirty, no new calls to the writer is made while the cache
+       ;; is dirty
+       (let [dirty (ref false)
+	     r (ref (load-file file-path))
+	     clean (fn []
+		     (dosync
+		      (ref-set dirty false))
+		     (tk/poop f
+			      (binding [*print-dup* true]
+				(prn-str @r))))]
+	 (add-watch r :writer (fn [k r old-state state]
+				(dosync
+				 (when-not @dirty
+				   (ref-set dirty true)
+				   (send-off writer-queue
+					     (fn [_]
+					       (clean)))))))
+	 r))))
+
+;; The make-work-dir function is needed to build folders on a machine
+;; that is unique within a parent folder.
+(defn make-work-dir
   "will attempt to make a directory of any name with parent,
   parent-dir"
   [parent-dir]
   (letfn [(f [attempt]
 	     (if attempt
 	       (let [id (. System (nanoTime))]
-		 (try (tk/mkdir (tk/relative-to parent-dir (str id)))
+		 (try (let [dir (tk/relative-to parent-dir (str id))]
+			(tk/mkdir dir)
+			dir)
 		      (catch Exception e
 			(f (next attempt)))))
-	       (throw (Exception. "Cannot make work-dir, tried 5 times"))))]
+	       (throw
+		(Exception. "Cannot make work-dir, tried 5 times"))))]
     (f (range 5))))
 
-;; Worker-refs
-(defrecord ssh-worker-ref [path username address port])
+(defn read-file [file]
+  (let [data (tk/eat file)]
+    (if (empty? data)
+      nil
+      (read-string data))))
 
-(defrecord local-worker-ref [path])
+;;; Worker functions
 
-(defn ->pid [name group version]
-  {:name name
-   :group group
-   :version version})
+;;; Todo
+;; halt, done?
 
-(defrecord package-metadata [pid contents-paths dependencies])
-;; pid: a package-id
-;; contents-paths: a vector of paths
-;; dependencies: a vector of runtime dependencies
+(defn install
+  "installs package (from package-dir) to worker (deploy-dir), copies
+  files and updates package-index"
+  [deploy-dir package-dir]
+  (let [package-index-file (tk/relative-to
+			    deploy-dir
+			    "package-index.clj")
+	package-index (read-file package-index-file)
+	{:keys [name group version] :as pid} (read-file
+					      (tk/relative-to
+					       package-dir
+					       "package.clj"))]
+    ;; don't install if already installed but if package-index doesn't
+    ;; exist, then install
+    (if (if package-index
+	  ((package-index {:name name :group group})
+	   version)
+	  nil)
+      (throw (Exception. (str "Package "
+			      (pr-str pid)
+			      " already exists")))
+      (let [install-dir (tk/relative-to deploy-dir "repo")
+	    work-dir (make-work-dir install-dir)]
+	;; copy files in directory
+	(tk/cp-contents package-dir work-dir)
+	;; update package-index
+	(tk/poop package-index-file
+		 (prn-str
+		  (update-in (try package-index
+				  (catch
+				      java.io.FileNotFoundException e
+				    {}))
+			     [{:name name :group group}]
+			     assoc
+			     version (tk/get-path work-dir))))))))
 
-(defn local-package-cache-builder-factory-factory [cache-path]
-  (fn [pid]
-    (if )))
+(defprotocol IChangePath
+  (change-path [f path]))
 
-;; -------------------------------------------------------------------
+(extend-type java.io.File
+  IChangePath
+  (change-path [f path]
+	       (java.io.File. path)))
 
-;; builds are defined to be blocking (waiting, syncrhonous), running
-;; implies asyncrhonous.
+(extend-type dj.toolkit.remote-file
+  IChangePath
+  (change-path [f path]
+	       (assoc f :path path)))
 
-;; There is no such thing as an executor object. There are only
-;; library functions and different queuing policies.
+;; In the future, for meta packages, uninstall should also call
+;; uninstall methods within package so that they can clean up
+;; externally installed files
 
-;; Work knows its dependencies, work will need to provide dependency
-;; information so that functions will allocate work on resource that
-;; is appropriate.
+(defn uninstall
+  "removes package from worker"
+  [deploy-dir pid]
+  (let [{:keys [name group version]} pid
+	package-index-file (tk/relative-to deploy-dir
+					   "package-index.clj")
+	package-index (or (read-file package-index-file)
+			  (throw
+			   (Exception.
+			    "No package-index found")))
+	package-path ((package-index
+		       {:name name
+			:group group})
+		      version)]
+    (if package-path
+      (tk/rm
+       (change-path deploy-dir
+		    package-path))
+      (throw (Exception. "Package not found")))
+    ;; update package-index
+    (tk/poop package-index-file
+	     (prn-str
+	      (update-in package-index
+			 [{:name name :group group}]
+			 dissoc version)))))
 
-;; A simple dispatch policy would be to run the work on a resource
-;; that can support it, and is the most free.
+;; Get run to work,
+(defprotocol IShIn
+  (sh-in [dir sh-script] "run script in directory"))
 
-;; All types of work will need to support basic functionality in order
-;; to interface with executors, thus I have the following protocol.
+(extend-type java.io.File
+  IShIn
+  (sh-in [dir sh-script]
+	  (sh/sh "sh" "-c" sh-script :dir dir)))
 
-(defprotocol Iwork
-  (dependencies-satisfied? [work resource]
-			   "returns true if the resource can provide
-  all dependencies required by work")
-  (allocate [work resource ok err]
-	    "allocate must create additional runtime dependencies for
-	    work on resource, passes handle to ok on success, !!
-	    Haven't decided what to pass to err, for now just call it")
-  (run [work resource handle ok err]
-       "executes job on resource, calls ok on success, err on fail")
-  (halt [work resource handle ok err]
-	"stops job on resource, calls ok on success, err on fail")
-  (result [work resource handle ok err]
-	  "returns result of job on resource, calls ok on success, err
-	  on fail")
-  (deallocate [work resource handle ok err]
-	      "deletes allocated resources of job on resource, calls
-	  ok on success, err on fail"))
+(extend-type dj.toolkit.remote-file
+  IShIn
+  (sh-in [dir sh-script]
+	  (let [{:keys [path username server port]} dir]
+	    (sh/sh "ssh" (str username "@" server) "-p" (str port)
+		   "sh" "-c"
+		   (str "'cd " path "; " sh-script "'")))))
 
-;; The executor interface is just a simple wrapper over the Iwork
-;; protocol. The executor handles is simply the resource the work is
-;; running on, the work itself for type information, and the handle
-;; returned by allocate.
+(defn pass
+  "pass will pass the package-index and package metadata to the
+  function f and then call f"
+  [deploy-dir pid f]
+  (let [{:keys [name group version]} pid
+	package-index-file (tk/relative-to deploy-dir
+					   "package-index.clj")
+	package-index (or (read-file package-index-file)
+			  (throw
+			   (Exception.
+			    "No package-index found")))
+	package-path ((package-index
+		       {:name name
+			:group group})
+		      version)
+	package-data (read-file
+		      (change-path
+		       deploy-dir
+		       (tk/str-path
+			package-path
+			"package.clj")))]
+    (f package-index package-data)))
 
-(defn err []
-  (println "Error!"))
+(defn run
+  "if package is runnable, then will start job, returns
+   job-reference"
+  [deploy-dir pid arg-line]
+  (pass deploy-dir pid
+	(fn [package-index package-data]
+	  (let [{:keys [executable]} (:methods package-data)]
+	    (sh-in (tk/relative-to deploy-dir "tmp")
+		   (str executable " " arg-line))))))
 
-(defn submit
-  ([resources work]
-     ;; current default is just the first resource, this is obviously
-     ;; bad, we will later add a more intelligent resource chooser
-     (submit first resources work))
-  ([r-fn resources work]
-     (let [r (r-fn resources)]
-       (allocate r work
-		 (fn [handle]
-		   [r work handle])
-		 err))))
+;; Problem, since there is data about version, group, and name in the
+;; package.clj and in the index, the information needs to be
+;; synced. There needs to be an update function, where update will
+;; look at the current data in package.clj, and update the index. So
+;; this means, go into package directory, then read package.clj, then
+;; update values.
 
-(defn start [[resource work handle]]
-  (run work resource handle identity err))
+(defn init-deploy-dir [dir]
+  (tk/mkdir dir)
+  (tk/mkdir (tk/relative-to dir "repo"))
+  (tk/mkdir (tk/relative-to dir "tmp"))
+  (tk/poop (tk/relative-to dir "package-index.clj")
+	   "{}\n"))
 
-(defn stop [[resource work handle]]
-  (halt work resource handle identity err))
+(defn init-package-dir
+  "metadata is a map, be sure to include at least name, group, and
+  version. Note you can also include
+ :runtime-dependencies, :external-paths, and :executable."
+  [dir metadata]
+  (tk/mkdir dir)
+  (tk/poop dir
+	   (prn-str metadata)))
 
-(defn return [[resource work handle]]
-  (result work resource handle identity err))
+(defprotocol Iversion-accept?
+  (version-accept? [this version]))
 
-(defn delete [[resource work handle]]
-  (deallocate work resource handle identity err))
+(extend-type java.lang.String
+  Iversion-accept?
+  (version-accept? [this version]
+		   (= this version)))
 
-;; Now we only need to define the types of work we will use. For HTK,
-;; the common work type is the torque script.
-
-;; First, we need to define some helper functions for all script like
-;; work.
-(defn greatest-script-id [resource]
-  (let [;; job-ids is all the ids of the storage directory
-	job-ids (map #(Integer/parseInt (tk/get-name %))
-		     (filter #(re-matches #"\d+" (tk/get-name %))
-			     (tk/ls (:storage-directory resource))))]
-    (if (empty? job-ids)
-      0
-      (apply max job-ids))))
-
-;; To minimize contention and communication between the server and
-;; client, I will cache the latest folder id on first call, and
-;; subsequent calls will synchronize on local cache only, I have to
-;; assume there is only one accessor to the storage directory at all
-;; times
-(let [resource-state (ref {})]
-  (defn new-script-dir
-    "returns a new workspace file"
-    [resource]
-    (let [{:keys [storage-directory]} resource]
-      (dosync
-       (if-let [path-a (@resource-state resource)]
-	 (tk/relative-to storage-directory
-			 (str ((alter resource-state update-in [resource] inc) resource)))
-	 (tk/relative-to storage-directory
-			 (str ((alter resource-state assoc-in [resource] (greatest-script-id resource)) resource))))))))
-;; torque-work contains all the dependency data
-;; runtime-dependencies: a vector of runtime dependency classifiers
-
-;; This is everything that needs to already be running at the time of
-;; execution
-
-;; software-dependencies: a map of aliases to satisfies functions
-
-;; These are the software files that are on the system
-
-;; copy-files:
-
-;; These are the files that are on the dispatcher that need to be copied
-;; over
-
-;; make-executables:
-
-;; This is a function, when given the script-dir and the alias-path
-;; map, will make files that need to be written over
-
-;; !! its possible we need to generate files from a different program
-;; !! other than java, and it may be in binary form
-(defrecord torque-work [runtime-dependencies software-dependencies copy-files make-executables]
-  Iwork
-  (dependencies-satisfied? [work resource]
-			   (let [{:keys [packages runtimes storage-directory]} resource]
-			     (and (not-every? #(empty? (set/select %
-								   runtimes))
-					      runtime-dependencies)
-				  (not-every? #(empty? (set/select %
-								   packages))
-					      (vals software-dependencies)))))
-  (allocate [work resource ok err]
-	    (let [{:keys [packages runtimes storage-directory]} resource
-		  ;; want aliases -> path
-		  path-map (reduce (fn [m a]
-				     (let [r (first (set/select (software-dependencies a)
-								packages))]
-				       (if r
-					 m
-					 (assoc m a (:path r)))))
-				   {}
-				   (keys software-dependencies))
-		  script-dir (new-script-dir resource)
-		  exes (make-executables path-map script-dir)]
-	      ;; copy files (map, file location local, file
-	      ;; location relative remote)
-	      (doseq [[txt path] exes]
-		(tk/poop (tk/relative-to script-dir path)
-			 txt))
-	      (doseq [[f path] copy-files]
-		(tk/cp f (tk/relative-to script-dir path)))))
-  (run [work resource handle ok err]
-       "executes job on resource, calls ok on success, err on fail")
-  (halt [work resource handle ok err]
-	"stops job on resource, calls ok on success, err on fail")
-  (result [work resource handle ok err]
-	  "returns result of job on resource, calls ok on success, err
-	  on fail")
-  (deallocate [work resource handle ok err]
-	      "deletes allocated resources of job on resource, calls
-	  ok on success, err on fail"))
-
-
-;; Sample resource map
-;;
-#_ {:packages {{:name "carp" :group "cardiosolv"} [{:version "1.5.0" :path "/path to place"}]
-	       }
-    :runtimes {{:name "torque"} nil}
-    :storage-directory (tk/new-file "/path/to/place")}
-
-;; Can add later resume, pause, done?
-
-#_ (do
-     (new-script-dir {:packages #{{:name "carp" :group "cardiosolv" :version "1.5.0" :path "/foo/bar"}}
-		      :runtimes #{{:name "torque"}}
-		      :storage-directory (tk/new-file "/home/hara/tmp")})
-     (first nil)
-     (clojure.set/select)
-     (work-dir (tk/new-remote-file "/home/bmillare/tmp" "bmillare" "boh.icm.jhu.edu" 22))
-
-     (allocate work resource identity err)
-     )
+(defn local-package-cache-builder-factory [package-idx-path fail]
+  (fn [{:keys [name group version] :as dependency}]
+    (let [version-map ((read-file (tk/new-file package-idx-path))
+		       {:name name
+			:group group})]
+      (if-let [accept-v (some (fn [v]
+				(if (version-accept? version v)
+				  v
+				  nil))
+			      (keys version-map))]
+	(version-map accept-v)
+	(fail dependency)))))
