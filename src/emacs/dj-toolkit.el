@@ -2,8 +2,6 @@
 ;; Then M-x load-file, auto-complete/etc/install.el
 ;; Make the folder dj/lib/ac-dict
 ;; Make the file dj/lib/ac-dict/clojure-mode
-;; Edit path to dj
-;; (setq inferior-lisp-program "/home/USERNAME/bin/dj repl")
 
 (require 'cl)
 (add-to-list 'load-path "~/.emacs.d/")

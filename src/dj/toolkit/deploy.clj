@@ -50,15 +50,8 @@
 ;; otherwise nil. The reason to do this is for security. There aren't
 ;; any forms that are evaluated, only reader loading of data types.
 
-;; builder - a function that accepts a dependency and returns the
-;; package path or fails and instead calls its continuation with the
-;; dependency passed. This continuation exists via a closure.
-
-;;; basic builder types:
-;; -package cache, local or remote
-;; -builder cache
-;; -from sources
-;; -custom recursive
+;; builder - a function that accepts a install-directory and installs
+;; the package files in that directory.
 
 ;; -------------------------------------------------------------------
 
@@ -102,9 +95,9 @@ overwrite the value."
 					       (clean)))))))
 	 r))))
 
-;; The make-work-dir function is needed to build folders on a machine
+;; The make-unique-dir function is needed to build folders on a machine
 ;; that is unique within a parent folder.
-(defn make-work-dir
+(defn make-unique-dir
   "will attempt to make a directory of any name with parent,
   parent-dir"
   [parent-dir]
@@ -117,7 +110,7 @@ overwrite the value."
 		      (catch Exception e
 			(f (next attempt)))))
 	       (throw
-		(Exception. "Cannot make work-dir, tried 5 times"))))]
+		(Exception. "Cannot make unique-dir, tried 5 times"))))]
     (f (range 5))))
 
 (defn read-file [file]
@@ -131,41 +124,72 @@ overwrite the value."
 ;;; Todo
 ;; halt, done?
 
-(defn install
-  "installs package (from package-dir) to worker (deploy-dir), copies
-  files and updates package-index"
+(defn update-index-data
+  "update-index helper function, returns new package-index with pid
+  from package-metadata installed"
+  [package-index package-install-path package-metadata]
+  (let [{:keys [name group version]} package-metadata]
+    (prn-str
+     (update-in package-index
+		[{:name name :group group}]
+		assoc
+		version package-install-path))))
+
+(defn update-index
+  "updates package-index in deploy-dir from data in package-dir"
   [deploy-dir package-dir]
   (let [package-index-file (tk/relative-to
 			    deploy-dir
 			    "package-index.clj")
-	package-index (read-file package-index-file)
-	{:keys [name group version] :as pid} (read-file
-					      (tk/relative-to
-					       package-dir
-					       "package.clj"))]
-    ;; don't install if already installed but if package-index doesn't
-    ;; exist, then install
-    (if (if package-index
-	  ((package-index {:name name :group group})
-	   version)
-	  nil)
-      (throw (Exception. (str "Package "
-			      (pr-str pid)
-			      " already exists")))
-      (let [install-dir (tk/relative-to deploy-dir "repo")
-	    work-dir (make-work-dir install-dir)]
-	;; copy files in directory
-	(tk/cp-contents package-dir work-dir)
-	;; update package-index
-	(tk/poop package-index-file
-		 (prn-str
-		  (update-in (try package-index
-				  (catch
-				      java.io.FileNotFoundException e
-				    {}))
-			     [{:name name :group group}]
-			     assoc
-			     version (tk/get-path work-dir))))))))
+	package-index (try (read-file package-index-file)
+			   (catch Exception e
+			     {}))
+	package-metadata (read-file
+			  (tk/relative-to
+			   package-dir
+			   "package.clj"))
+	{:keys [name group version]} package-metadata
+	;; don't install if already installed but if package-index doesn't
+	;; exist, then install
+	write-idx? (if (empty? package-index)
+		     true
+		     (let [versions (package-index {:name name :group group})]
+		       (if versions
+			 (if (versions version)
+			   (throw (Exception. (str "Package "
+						   (pr-str {:name name
+							    :group group
+							    :version version})
+						   " already exists")))
+			   true)
+			 true)))]
+    (when write-idx?
+      (tk/poop package-index-file
+	       (update-index-data package-index
+				  package-dir
+				  package-metadata)))))
+
+(defn cp-install
+  "installs package (from package-dir) to worker (deploy-dir), copies
+  files and updates package-index"
+  [deploy-dir package-dir]
+  (let [install-dir (tk/relative-to deploy-dir "repo")
+	work-dir (make-unique-dir install-dir)]
+    ;; copy files in directory
+    (tk/cp-contents package-dir work-dir)
+    ;; update package-index
+    (update-index deploy-dir package-dir)))
+
+(defn build-install
+  "installs package (from package-dir) to worker (deploy-dir),
+calls builder with package-dir and then updates package-index"
+  [deploy-dir builder]
+  (let [install-dir (tk/relative-to deploy-dir "repo")
+	package-dir (make-unique-dir install-dir)]
+    ;; build files in directory
+    (builder package-dir)
+    ;; update package-index
+    (update-index deploy-dir package-dir)))
 
 (defprotocol IChangePath
   (change-path [f path]))
@@ -184,6 +208,14 @@ overwrite the value."
 ;; uninstall methods within package so that they can clean up
 ;; externally installed files
 
+(defn pid-from-dir [f]
+  (let [{:keys [name group version]} (read-file
+				      (tk/relative-to f
+						      "package.clj"))]
+    {:name name
+     :group group
+     :version version}))
+
 (defn uninstall
   "removes package from worker"
   [deploy-dir pid]
@@ -201,7 +233,7 @@ overwrite the value."
     (if package-path
       (tk/rm
        (change-path deploy-dir
-		    package-path))
+		    (tk/get-path package-path)))
       (throw (Exception. "Package not found")))
     ;; update package-index
     (tk/poop package-index-file
@@ -209,6 +241,16 @@ overwrite the value."
 	      (update-in package-index
 			 [{:name name :group group}]
 			 dissoc version)))))
+
+(defn build-map
+  "given a parent directory, and a map of relative-paths to content,
+  creates files with content"
+  [parent-dir m]
+  (doseq [k (keys m)]
+    (tk/poop (tk/relative-to parent-dir k)
+	     (m k))))
+
+;; -------------------------------------------------------------------
 
 ;; Get run to work,
 (defprotocol IShIn
