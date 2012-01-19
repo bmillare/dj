@@ -1,8 +1,8 @@
 (in-ns 'dj.toolkit)
 
-(defn- sh-exception [result]
+(defn sh-exception [result]
   (if (= (:exit result) 0)
-    nil
+    (:out result)
     (throw (Exception. (:err result)))))
 
 (defn- shify [args]
@@ -247,26 +247,32 @@
 (defmulti cp #(vector (type %1) (type %2)))
 
 (defmethod cp [java.lang.String java.lang.String] [^java.lang.String in ^java.lang.String out]
-	   (sh/sh "cp" "-R" in out))
+	   (sh-exception
+	    (sh/sh "cp" "-R" in out)))
 
 (defmethod cp [java.io.File java.io.File] [^java.io.File in ^java.io.File out]
-	   (sh/sh "cp" "-R" (.getCanonicalPath in) (.getCanonicalPath out)))
+	   (sh-exception
+	    (sh/sh "cp" "-R" (.getCanonicalPath in) (.getCanonicalPath out))))
 
 (defmethod cp [remote-file java.io.File] [in ^java.io.File out]
 	   (let [{:keys [path username server port]} in]
-	     (sh/sh "scp" "-r" "-P" (str port) (str username "@" server ":" path) (.getCanonicalPath out))))
+	     (sh-exception
+	      (sh/sh "scp" "-r" "-P" (str port) (str username "@" server ":" path) (.getCanonicalPath out)))))
 
 (defmethod cp [java.io.File remote-file] [^java.io.File in out]
 	   (let [{:keys [path username server port]} out]
-	     (sh/sh "scp" "-r" "-P" (str port) (.getCanonicalPath in) (str username "@" server ":" path))))
+	     (sh-exception
+	      (sh/sh "scp" "-r" "-P" (str port) (.getCanonicalPath in) (str username "@" server ":" path)))))
 
 (defmethod cp [remote-file java.lang.String] [in ^java.lang.String out]
 	   (let [{:keys [path username server port]} in]
-	     (sh/sh "scp" "-r" "-P" (str port) (str username "@" server ":" path) out)))
+	     (sh-exception
+	      (sh/sh "scp" "-r" "-P" (str port) (str username "@" server ":" path) out))))
 
 (defmethod cp [java.lang.String remote-file] [^java.lang.String in out]
 	   (let [{:keys [path username server port]} out]
-	     (sh/sh "scp" "-r" "-P" (str port) in (str username "@" server ":" path))))
+	     (sh-exception
+	      (sh/sh "scp" "-r" "-P" (str port) in (str username "@" server ":" path)))))
 
 (defmethod cp [remote-file remote-file] [in out]
 	   (throw (Exception. "not implemented")))

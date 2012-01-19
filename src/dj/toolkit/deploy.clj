@@ -50,8 +50,9 @@
 ;; otherwise nil. The reason to do this is for security. There aren't
 ;; any forms that are evaluated, only reader loading of data types.
 
-;; builder - a function that accepts a install-directory and installs
-;; the package files in that directory.
+;; builder - a function that accepts a install-directory and a
+;; package-index, then it installs the package files in that
+;; directory.
 
 ;; -------------------------------------------------------------------
 
@@ -113,6 +114,7 @@ overwrite the value."
 		(Exception. "Cannot make unique-dir, tried 5 times"))))]
     (f (range 5))))
 
+;; deprecated
 (defn read-file [file]
   (let [data (tk/eat file)]
     (if (empty? data)
@@ -124,72 +126,68 @@ overwrite the value."
 ;;; Todo
 ;; halt, done?
 
+;; deprecated
 (defn update-index-data
   "update-index helper function, returns new package-index with pid
   from package-metadata installed"
-  [package-index package-install-path package-metadata]
-  (let [{:keys [name group version]} package-metadata]
-    (prn-str
-     (update-in package-index
-		[{:name name :group group}]
-		assoc
-		version package-install-path))))
+  [package-index package-install-path name group version]
+  (prn-str
+   (update-in package-index
+	      [{:name name :group group}]
+	      assoc
+	      version package-install-path)))
 
+;; deprecated
+(defn read-package-index [package-index-file]
+  (try (read-file package-index-file)
+       (catch Exception e
+	 {})))
+
+;; deprecated
 (defn update-index
-  "updates package-index in deploy-dir from data in package-dir"
-  [deploy-dir package-dir]
-  (let [package-index-file (tk/relative-to
-			    deploy-dir
-			    "package-index.clj")
-	package-index (try (read-file package-index-file)
-			   (catch Exception e
-			     {}))
-	package-metadata (read-file
+  "updates package-index from data in package-dir"
+  [package-index-file package-index package-dir]
+  (let [package-metadata (read-file
 			  (tk/relative-to
 			   package-dir
 			   "package.clj"))
 	{:keys [name group version]} package-metadata
-	;; don't install if already installed but if package-index doesn't
-	;; exist, then install
+	;; don't install if already installed but if package-index
+	;; doesn't exist, then install
 	write-idx? (if (empty? package-index)
 		     true
-		     (let [versions (package-index {:name name :group group})]
+		     (let [versions (package-index {:name name
+						    :group group})]
 		       (if versions
 			 (if (versions version)
-			   (throw (Exception. (str "Package "
-						   (pr-str {:name name
-							    :group group
-							    :version version})
-						   " already exists")))
+			   (throw (Exception.
+				   (str
+				    "Package "
+				    (pr-str {:name name
+					     :group group
+					     :version version})
+				    " already exists")))
 			   true)
 			 true)))]
     (when write-idx?
       (tk/poop package-index-file
 	       (update-index-data package-index
-				  package-dir
-				  package-metadata)))))
+				  (tk/get-path package-dir)
+				  name group version)))))
 
+;; deprecated
 (defn cp-install
   "installs package (from package-dir) to worker (deploy-dir), copies
   files and updates package-index"
   [deploy-dir package-dir]
   (let [install-dir (tk/relative-to deploy-dir "repo")
-	work-dir (make-unique-dir install-dir)]
-    ;; copy files in directory
+	work-dir (make-unique-dir install-dir)
+	package-index-file (tk/relative-to
+			    deploy-dir
+			    "package-index.clj")
+	package-index (read-package-index package-index-file)]
     (tk/cp-contents package-dir work-dir)
-    ;; update package-index
-    (update-index deploy-dir package-dir)))
-
-(defn build-install
-  "installs package (from package-dir) to worker (deploy-dir),
-calls builder with package-dir and then updates package-index"
-  [deploy-dir builder]
-  (let [install-dir (tk/relative-to deploy-dir "repo")
-	package-dir (make-unique-dir install-dir)]
-    ;; build files in directory
-    (builder package-dir)
-    ;; update package-index
-    (update-index deploy-dir package-dir)))
+    (update-index package-index-file package-index package-dir)))
 
 (defprotocol IChangePath
   (change-path [f path]))
@@ -203,6 +201,35 @@ calls builder with package-dir and then updates package-index"
   IChangePath
   (change-path [f path]
 	       (assoc f :path path)))
+
+(defn build-install
+  "installs package (from package-dir) to worker (deploy-dir),
+calls builder with package-dir and then updates package-index"
+  [deploy-dir builder]
+  (let [install-dir (tk/relative-to deploy-dir "repo")
+	package-dir (make-unique-dir install-dir)
+	package-index-file (tk/relative-to
+			    deploy-dir
+			    "package-index.clj")
+	package-index (read-package-index package-index-file)
+	get-package-metadata
+	(fn [pid]
+	  (let [{:keys [name group version]} pid
+		versions (package-index {:name name
+					 :group group})]
+	    (when versions
+	      (let [path (versions version)]
+		(assoc (read-file
+			(change-path
+			 deploy-dir
+			 (tk/str-path path
+				      "package.clj")))
+		  :path path)))))]
+    (builder package-dir
+	     get-package-metadata)
+    (update-index package-index-file
+		  package-index
+		  package-dir)))
 
 ;; In the future, for meta packages, uninstall should also call
 ;; uninstall methods within package so that they can clean up
@@ -233,7 +260,7 @@ calls builder with package-dir and then updates package-index"
     (if package-path
       (tk/rm
        (change-path deploy-dir
-		    (tk/get-path package-path)))
+		    package-path))
       (throw (Exception. "Package not found")))
     ;; update package-index
     (tk/poop package-index-file
@@ -241,6 +268,13 @@ calls builder with package-dir and then updates package-index"
 	      (update-in package-index
 			 [{:name name :group group}]
 			 dissoc version)))))
+
+(defn uninstall-by-folder
+  "uninstall by folder name"
+  [deploy-dir folder-name]
+  (uninstall
+   deploy-dir
+   (pid-from-dir (tk/relative-to deploy-dir (str "repo/" folder-name)))))
 
 (defn build-map
   "given a parent directory, and a map of relative-paths to content,
@@ -259,16 +293,19 @@ calls builder with package-dir and then updates package-index"
 (extend-type java.io.File
   IShIn
   (sh-in [dir sh-script]
-	  (sh/sh "sh" "-c" sh-script :dir dir)))
+	 (tk/sh-exception
+	  (sh/sh "sh" "-c" sh-script :dir dir))))
 
 (extend-type dj.toolkit.remote-file
   IShIn
   (sh-in [dir sh-script]
+	 (tk/sh-exception
 	  (let [{:keys [path username server port]} dir]
 	    (sh/sh "ssh" (str username "@" server) "-p" (str port)
 		   "sh" "-c"
-		   (str "'cd " path "; " sh-script "'")))))
+		   (str "'cd " path "; " sh-script "'"))))))
 
+;; deprecated
 (defn pass
   "pass will pass the package-index and package metadata to the
   function f and then call f"
@@ -292,6 +329,7 @@ calls builder with package-dir and then updates package-index"
 			"package.clj")))]
     (f package-index package-data)))
 
+;; deprecated
 (defn run
   "if package is runnable, then will start job, returns
    job-reference"
@@ -309,6 +347,7 @@ calls builder with package-dir and then updates package-index"
 ;; this means, go into package directory, then read package.clj, then
 ;; update values.
 
+;; deprecated
 (defn init-deploy-dir [dir]
   (tk/mkdir dir)
   (tk/mkdir (tk/relative-to dir "repo"))
@@ -316,6 +355,7 @@ calls builder with package-dir and then updates package-index"
   (tk/poop (tk/relative-to dir "package-index.clj")
 	   "{}\n"))
 
+;; deprecated
 (defn init-package-dir
   "metadata is a map, be sure to include at least name, group, and
   version. Note you can also include
@@ -333,6 +373,7 @@ calls builder with package-dir and then updates package-index"
   (version-accept? [this version]
 		   (= this version)))
 
+;; deprecated
 (defn local-package-cache-builder-factory [package-idx-path fail]
   (fn [{:keys [name group version] :as dependency}]
     (let [version-map ((read-file (tk/new-file package-idx-path))
