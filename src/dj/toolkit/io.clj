@@ -89,6 +89,10 @@
   "get str path for file like objects"
   (get-path [f]))
 
+(defprotocol Iexists
+  "return true if file exists"
+  (exists? [f]))
+
 (defn new-file
   "returns a new java.io.File with args as files or str-paths"
   [& paths]
@@ -141,7 +145,10 @@
 	  (.getParentFile f))
   Iget-path
   (get-path [f]
-	    (.getPath f)))
+	    (.getPath f))
+  Iexists
+  (exists? [f]
+	   (.exists f)))
 
 (defmethod print-dup java.io.File [o w]
 	   (print-ctor o (fn [o w] (.write ^java.io.Writer w (pr-str (.getPath ^java.io.File o)))) w))
@@ -216,7 +223,13 @@
 		 (interpose "/" (filter #(not (empty? %)) (drop-last (.split ^String (:path f) "/"))))))
   Iget-path
   (get-path [f]
-	    (:path f)))
+	    path)
+  Iexists
+  (exists? [f]
+	   (zero?
+	      (:exit
+	       (ssh username server port
+		    (str "test -e " path))))))
 
 (defn new-remote-file [path username server port]
   (remote-file. path username server port))

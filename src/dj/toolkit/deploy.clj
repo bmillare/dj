@@ -11,38 +11,23 @@
 ;; worker - computer, something capable of storing files and
 ;; performing work. Every worker must have a directory for 'deploy' to
 ;; work with. This will be aliased as 'deploy-dir'. This directory
-;; must have a file 'package-index.clj' (described below), a 'repo'
-;; directory, for a common place (but not limited to) to store
-;; packages, and a 'tmp' directory, for jobs to safely, store
-;; intermediates and results.
+;; must have a file 'index.clj' (described below), a 'repo' directory,
+;; for a common place (but not limited to) to store packages, and a
+;; 'tmp' directory, for jobs to safely, store intermediates and
+;; results.
 
-;; path/[package-index.clj, repo, tmp]
+;; path/[index.clj, repo, tmp]
 
-;; package - a folder containing files and a metadata file
-;; (package.clj) containing the runtime dependencies, name, group,
-;; version, and more (see below for full spec). Installing it should
-;; only require copying the files and updating the package-index. The
-;; name of the folder does not matter, only its contents.
-
-;;; Package spec
-;; {:name, :group, :version, :runtime-dependencies, :external-paths -
-;; for meta packages that point to files already present on worker,
-;; :methods - leads to another map, which has keys bound to specific
-;; operations. The :executable key is the single package dir relative
-;; path to a default executable}
-
-;;; Package methods
-;; In order to prepare for future functionality, the :methods key is
-;; available in the package spec. We can add namespaced methods, which
-;; is a map of whatever you want. The intention is to provide an
-;; extensible bed for adding functionality.
+;; package - a folder containing files. Installing it should only
+;; require copying the files and updating the index. The name of the
+;; folder does not matter, only its contents.
 
 ;; package-id - an identifier that is 1-1 to a particular package
 
-;; package-index.clj - each worker has a package index, which has a
-;; package{name and group only} -> version -> install path, nested
-;; map. This file is stored on the worker.
+;; index.clj - each worker has a package index, which has a
+;; package{name, group and version} package metadata
 
+;;; not final yet
 ;; dependency - when a package needs to declare a dependency, it will
 ;; return a map with name, group, and version-classifier. The version
 ;; will be a type implements a version-accept? interface, which
@@ -50,11 +35,19 @@
 ;; otherwise nil. The reason to do this is for security. There aren't
 ;; any forms that are evaluated, only reader loading of data types.
 
-;; builder - a function that accepts a install-directory and a
-;; package-index, then it installs the package files in that
-;; directory.
+;; builder - a function that accepts an install-directory and a
+;; index-ref, then it installs the package files in that directory.
 
 ;; -------------------------------------------------------------------
+
+(defn read-file
+  "clojure.core/load-file evaluates the forms in the file, this
+  function only reads them in as data"
+  [file]
+  (let [data (tk/eat file)]
+    (if (empty? data)
+      nil
+      (read-string data))))
 
 (defn durable-ref
   "returns a ref with a watcher that writes to file contents of ref as
@@ -64,29 +57,25 @@ date (dirty). The implementation will try to update the file as much
 as possible without slowing down the ref. Also takes a default value,
 where it will create a file if it doesn't exist, otherwise it will not
 overwrite the value."
-  ([file-path default-value]
-     (let [^java.io.File f (tk/new-file file-path)]
-       (when-not (.exists f)
-	 (tk/poop f
-		  (binding [*print-dup* true]
-		    (prn-str default-value))))
-       (durable-ref file-path)))
-  ([file-path]
-     (let [^java.io.File f (tk/new-file file-path)
-	   writer-queue (agent nil)]
+  ([f default-value]
+     (when-not (tk/exists? f)
+       (tk/poop f
+		(prn-str default-value)))
+     (durable-ref f))
+  ([f]
+     (let [writer-queue (agent nil)]
        ;; When the agent starts writing, the cache is marked clean
 
        ;; When the ref changes, a call to the writer is made. The cache
        ;; is dirty, no new calls to the writer is made while the cache
        ;; is dirty
        (let [dirty (ref false)
-	     r (ref (load-file file-path))
+	     r (ref (read-file f))
 	     clean (fn []
 		     (dosync
 		      (ref-set dirty false))
 		     (tk/poop f
-			      (binding [*print-dup* true]
-				(prn-str @r))))]
+			      (prn-str @r)))]
 	 (add-watch r :writer (fn [k r old-state state]
 				(dosync
 				 (when-not @dirty
@@ -114,81 +103,6 @@ overwrite the value."
 		(Exception. "Cannot make unique-dir, tried 5 times"))))]
     (f (range 5))))
 
-;; deprecated
-(defn read-file [file]
-  (let [data (tk/eat file)]
-    (if (empty? data)
-      nil
-      (read-string data))))
-
-;;; Worker functions
-
-;;; Todo
-;; halt, done?
-
-;; deprecated
-(defn update-index-data
-  "update-index helper function, returns new package-index with pid
-  from package-metadata installed"
-  [package-index package-install-path name group version]
-  (prn-str
-   (update-in package-index
-	      [{:name name :group group}]
-	      assoc
-	      version package-install-path)))
-
-;; deprecated
-(defn read-package-index [package-index-file]
-  (try (read-file package-index-file)
-       (catch Exception e
-	 {})))
-
-;; deprecated
-(defn update-index
-  "updates package-index from data in package-dir"
-  [package-index-file package-index package-dir]
-  (let [package-metadata (read-file
-			  (tk/relative-to
-			   package-dir
-			   "package.clj"))
-	{:keys [name group version]} package-metadata
-	;; don't install if already installed but if package-index
-	;; doesn't exist, then install
-	write-idx? (if (empty? package-index)
-		     true
-		     (let [versions (package-index {:name name
-						    :group group})]
-		       (if versions
-			 (if (versions version)
-			   (throw (Exception.
-				   (str
-				    "Package "
-				    (pr-str {:name name
-					     :group group
-					     :version version})
-				    " already exists")))
-			   true)
-			 true)))]
-    (when write-idx?
-      (tk/poop package-index-file
-	       (update-index-data package-index
-				  (tk/get-path package-dir)
-				  name group version)))))
-
-;; deprecated
-(defn cp-install
-  "installs package (from package-dir) to worker (deploy-dir), copies
-  files and updates package-index"
-  [deploy-dir package-dir]
-  (let [install-dir (tk/relative-to deploy-dir "repo")
-	work-dir (make-unique-dir install-dir)
-	package-index-file (tk/relative-to
-			    deploy-dir
-			    "package-index.clj")
-	package-index (read-package-index package-index-file)]
-    (tk/cp-contents package-dir work-dir)
-    (update-index package-index-file package-index package-dir)))
-
 (defprotocol IChangePath
   (change-path [f path]))
 
@@ -204,77 +118,31 @@ overwrite the value."
 
 (defn build-install
   "installs package (from package-dir) to worker (deploy-dir),
-calls builder with package-dir and then updates package-index"
-  [deploy-dir builder]
+calls builder with package-dir and then updates package-index. All
+  builders must return metadata."
+  [deploy-dir index-ref builder]
   (let [install-dir (tk/relative-to deploy-dir "repo")
 	package-dir (make-unique-dir install-dir)
-	package-index-file (tk/relative-to
-			    deploy-dir
-			    "package-index.clj")
-	package-index (read-package-index package-index-file)
-	get-package-metadata
-	(fn [pid]
-	  (let [{:keys [name group version]} pid
-		versions (package-index {:name name
-					 :group group})]
-	    (when versions
-	      (let [path (versions version)]
-		(assoc (read-file
-			(change-path
-			 deploy-dir
-			 (tk/str-path path
-				      "package.clj")))
-		  :path path)))))]
-    (builder package-dir
-	     get-package-metadata)
-    (update-index package-index-file
-		  package-index
-		  package-dir)))
-
-;; In the future, for meta packages, uninstall should also call
-;; uninstall methods within package so that they can clean up
-;; externally installed files
-
-(defn pid-from-dir [f]
-  (let [{:keys [name group version]} (read-file
-				      (tk/relative-to f
-						      "package.clj"))]
-    {:name name
-     :group group
-     :version version}))
+	package-metadata (assoc (builder package-dir
+					 index-ref)
+			   :path (tk/get-path package-dir))
+	{:keys [name group version]} package-metadata
+	pid {:name name :group group :version version}]
+    (dosync (alter index-ref
+		   assoc
+		   pid package-metadata))))
 
 (defn uninstall
   "removes package from worker"
-  [deploy-dir pid]
-  (let [{:keys [name group version]} pid
-	package-index-file (tk/relative-to deploy-dir
-					   "package-index.clj")
-	package-index (or (read-file package-index-file)
-			  (throw
-			   (Exception.
-			    "No package-index found")))
-	package-path ((package-index
-		       {:name name
-			:group group})
-		      version)]
-    (if package-path
-      (tk/rm
-       (change-path deploy-dir
-		    package-path))
-      (throw (Exception. "Package not found")))
-    ;; update package-index
-    (tk/poop package-index-file
-	     (prn-str
-	      (update-in package-index
-			 [{:name name :group group}]
-			 dissoc version)))))
-
-(defn uninstall-by-folder
-  "uninstall by folder name"
-  [deploy-dir folder-name]
-  (uninstall
-   deploy-dir
-   (pid-from-dir (tk/relative-to deploy-dir (str "repo/" folder-name)))))
+  [deploy-dir index-ref pid]
+  (dosync
+   (let [package-metadata (@index-ref pid)]
+     (if package-metadata
+       (tk/rm
+	(change-path deploy-dir
+		     (:path package-metadata)))
+       (throw (Exception. "Package not found")))
+     (alter index-ref dissoc pid))))
 
 (defn build-map
   "given a parent directory, and a map of relative-paths to content,
@@ -304,85 +172,3 @@ calls builder with package-dir and then updates package-index"
 	    (sh/sh "ssh" (str username "@" server) "-p" (str port)
 		   "sh" "-c"
 		   (str "'cd " path "; " sh-script "'"))))))
-
-;; deprecated
-(defn pass
-  "pass will pass the package-index and package metadata to the
-  function f and then call f"
-  [deploy-dir pid f]
-  (let [{:keys [name group version]} pid
-	package-index-file (tk/relative-to deploy-dir
-					   "package-index.clj")
-	package-index (or (read-file package-index-file)
-			  (throw
-			   (Exception.
-			    "No package-index found")))
-	package-path ((package-index
-		       {:name name
-			:group group})
-		      version)
-	package-data (read-file
-		      (change-path
-		       deploy-dir
-		       (tk/str-path
-			package-path
-			"package.clj")))]
-    (f package-index package-data)))
-
-;; deprecated
-(defn run
-  "if package is runnable, then will start job, returns
-   job-reference"
-  [deploy-dir pid arg-line]
-  (pass deploy-dir pid
-	(fn [package-index package-data]
-	  (let [{:keys [executable]} (:methods package-data)]
-	    (sh-in (tk/relative-to deploy-dir "tmp")
-		   (str executable " " arg-line))))))
-
-;; Problem, since there is data about version, group, and name in the
-;; package.clj and in the index, the information needs to be
-;; synced. There needs to be an update function, where update will
-;; look at the current data in package.clj, and update the index. So
-;; this means, go into package directory, then read package.clj, then
-;; update values.
-
-;; deprecated
-(defn init-deploy-dir [dir]
-  (tk/mkdir dir)
-  (tk/mkdir (tk/relative-to dir "repo"))
-  (tk/mkdir (tk/relative-to dir "tmp"))
-  (tk/poop (tk/relative-to dir "package-index.clj")
-	   "{}\n"))
-
-;; deprecated
-(defn init-package-dir
-  "metadata is a map, be sure to include at least name, group, and
-  version. Note you can also include
- :runtime-dependencies, :external-paths, and :executable."
-  [dir metadata]
-  (tk/mkdir dir)
-  (tk/poop dir
-	   (prn-str metadata)))
-
-(defprotocol Iversion-accept?
-  (version-accept? [this version]))
-
-(extend-type java.lang.String
-  Iversion-accept?
-  (version-accept? [this version]
-		   (= this version)))
-
-;; deprecated
-(defn local-package-cache-builder-factory [package-idx-path fail]
-  (fn [{:keys [name group version] :as dependency}]
-    (let [version-map ((read-file (tk/new-file package-idx-path))
-		       {:name name
-			:group group})]
-      (if-let [accept-v (some (fn [v]
-				(if (version-accept? version v)
-				  v
-				  nil))
-			      (keys version-map))]
-	(version-map accept-v)
-	(fail dependency)))))

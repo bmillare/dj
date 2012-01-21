@@ -68,3 +68,13 @@
         arglists (:arglists m)
         doc (:doc m)]
     (list `def (with-meta n {:doc doc :arglists (list 'quote arglists)}) (eval sym))))
+
+(defn filter-fns
+  "like filter, but takes a list of classifier functions instead of a
+  single classifier"
+  [fns rows]
+  (filter #(every?
+	    (fn [f]
+	      (f %))
+	    fns)
+	  rows))
