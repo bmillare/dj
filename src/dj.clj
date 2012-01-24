@@ -8,6 +8,7 @@
 (tk/import-fn #'cl/get-classpaths)
 (tk/import-fn #'cl/get-current-classloader)
 (tk/import-fn #'cl/reload-class-file)
+(tk/import-fn #'cl/reset-native-paths!)
 (tk/import-fn #'dj.deps.maven/ls-repo)
 
 (def repository-urls dj.deps.maven/repository-urls)

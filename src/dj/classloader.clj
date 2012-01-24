@@ -33,7 +33,13 @@
 (defn unchecked-add-to-classpath!
   "adds file to classpath for classloader"
   [classloader f]
-  (.addURL classloader (.toURL (.toURI f)))
+  (let [clazz (class classloader)]
+    (if (= clazz
+	   sun.misc.Launcher$AppClassLoader)
+      (let [method (.getDeclaredMethod clazz "appendToClassPathForInstrumentation" (into-array Class [java.lang.String]))] 
+	(.setAccessible method true)
+	(.invoke method classloader (into-array Object [(.getPath f)])))
+      (.addURL classloader (.toURL (.toURI f)))))
   f)
 
 (defn reload-class-file
@@ -48,6 +54,16 @@
 		  (tk/to-byte-array f)
 		  nil)))
 
+(defn reset-native-paths! [native-paths]
+  ;; Reset java.library.path by setting sys_paths variable in
+  ;; java.lang.ClassLoader to NULL, depends on java implementation
+  ;; knowledge
+  (let [clazz java.lang.ClassLoader
+	field (.getDeclaredField clazz "sys_paths")] 
+    (.setAccessible field true)
+    (.set field clazz nil)
+    (System/setProperty "java.library.path" (apply str (interpose ";" native-paths)))))
+
 (defn add-dependencies!
   "given classloader, takes dependency objects and determines their
   dependencies with options"
@@ -55,11 +71,6 @@
   (let [existing-paths (get-classpaths classloader)
 	[src-paths jar-paths native-paths] (dj.deps/obtain-dependencies! dependency-objects options)
 	src-jar-paths (set/difference (set/union (set src-paths) (set jar-paths)) existing-paths)]
-    ;; Reset java.library.path by setting sys_paths variable in java.lang.ClassLoader to NULL, depends on java implementation knowledge
-    (let [clazz java.lang.ClassLoader
-	  field (.getDeclaredField clazz "sys_paths")] 
-      (.setAccessible field true)
-      (.set field clazz nil)
-      (System/setProperty "java.library.path" (apply str (interpose ";" native-paths))))
+    (reset-native-paths! native-paths)
     (doseq [p src-jar-paths]
       (unchecked-add-to-classpath! classloader p))))
