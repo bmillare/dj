@@ -60,7 +60,8 @@ overwrite the value."
   ([f default-value]
      (when-not (tk/exists? f)
        (tk/poop f
-		(prn-str default-value)))
+		(with-out-str
+		  (clojure.pprint/pprint default-value))))
      (durable-ref f))
   ([f]
      (let [writer-queue (agent nil)]
@@ -75,7 +76,8 @@ overwrite the value."
 		     (dosync
 		      (ref-set dirty false))
 		     (tk/poop f
-			      (prn-str @r)))]
+			      (with-out-str
+				(clojure.pprint/pprint @r))))]
 	 (add-watch r :writer (fn [k r old-state state]
 				(dosync
 				 (when-not @dirty
@@ -128,9 +130,26 @@ calls builder with package-dir and then updates package-index. All
 			   :path (tk/get-path package-dir))
 	{:keys [name group version]} package-metadata
 	pid {:name name :group group :version version}]
-    (dosync (alter index-ref
-		   assoc
-		   pid package-metadata))))
+    (dosync (if (@index-ref pid)
+	      (throw (Exception. (str "Package "
+				      (pr-str pid)
+				      " already exists")))
+	      (alter index-ref
+		    assoc
+		    pid package-metadata)))))
+
+(defn unreferenced-folders
+  "returns folders that aren't referenced in the index"
+  [deploy-dir index-ref]
+  (let [all-dirs (tk/ls (tk/relative-to deploy-dir "repo"))
+	paths (set
+	       (map :path
+		    (filter :path
+			    (vals @index-ref))))]
+    (for [d all-dirs
+	  :let [path (tk/get-path d)]
+	  :when (not (paths path))]
+      d)))
 
 (defn uninstall
   "removes package from worker"
