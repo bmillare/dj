@@ -3,7 +3,7 @@
 (defn sh-exception [result]
   (if (= (:exit result) 0)
     (:out result)
-    (throw (Exception. (:err result)))))
+    (throw (Exception. ^java.lang.String (:err result)))))
 
 (defn- shify [args]
   (apply str (interpose " " args)))
@@ -95,6 +95,7 @@
 
 (defn new-file
   "returns a new java.io.File with args as files or str-paths"
+  ^java.io.File
   [& paths]
   (java.io.File. ^String (apply str-path (map (fn [p]
 						(if (= (type p)
@@ -133,7 +134,7 @@
 	  (rm f)))
       (.delete dest))
   Imv
-  (mv [target dest]
+  (mv [target ^java.io.File dest]
       (if (.isDirectory dest)
 	(.renameTo target (new-file dest (.getName target)))
 	(.renameTo target dest)))
@@ -188,7 +189,7 @@
        (let [result (ssh username server port (shify ["cat" path]))]
 	 (if (zero? (:exit result))
 	   (:out result)
-	   (throw (Exception. (:err result))))))
+	   (throw (Exception. ^java.lang.String (:err result))))))
   Imkdir
   (mkdir [dest]
 	 (if (zero? (:exit (ssh username server port (str "mkdir -p " path))))

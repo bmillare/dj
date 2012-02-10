@@ -111,7 +111,7 @@ overwrite the value."
 (extend-type java.io.File
   IChangePath
   (change-path [f path]
-	       (java.io.File. path)))
+	       (java.io.File. ^java.lang.String path)))
 
 (extend-type dj.toolkit.remote-file
   IChangePath
