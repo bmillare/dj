@@ -23,9 +23,10 @@
 ;; folder does not matter, only its contents.
 
 ;; package-id - an identifier that is 1-1 to a particular package
+;; contains the name, group, version, and dependencies
 
-;; index.clj - each worker has a package index, which has a
-;; package{name, group and version} package metadata
+;; index.clj - each worker has a package index, which maps package-ids
+;; to metadata pertaining to the installed package
 
 ;;; not final yet
 ;; dependency - when a package needs to declare a dependency, it will
@@ -35,8 +36,12 @@
 ;; otherwise nil. The reason to do this is for security. There aren't
 ;; any forms that are evaluated, only reader loading of data types.
 
+;; maker - returns a pair, (pid, builder)
+
 ;; builder - a function that accepts an install-directory and a
-;; index-ref, then it installs the package files in that directory.
+;; index-ref, then it installs the package files in that
+;; directory. Builders return additional metadata that will be added
+;; in addition to path.
 
 ;; -------------------------------------------------------------------
 
@@ -122,21 +127,26 @@ overwrite the value."
   "installs package (from package-dir) to worker (deploy-dir),
 calls builder with package-dir and then updates package-index. All
   builders must return metadata."
-  [deploy-dir index-ref builder]
+  [deploy-dir index-ref {:keys [package-id dependencies builder]}]
   (let [install-dir (tk/relative-to deploy-dir "repo")
-	package-dir (make-unique-dir install-dir)
-	package-metadata (assoc (builder package-dir
-					 index-ref)
-			   :path (tk/get-path package-dir))
-	{:keys [name group version]} package-metadata
-	pid {:name name :group group :version version}]
-    (dosync (if (@index-ref pid)
-	      (throw (Exception. (str "Package "
-				      (pr-str pid)
-				      " already exists")))
-	      (alter index-ref
-		    assoc
-		    pid package-metadata)))))
+	missing-dependencies (seq
+			      (filter #(not (@index-ref %))
+				      dependencies))]
+    (if missing-dependencies
+      (throw (Exception. (str "Missing dependencies: "
+			      (pr-str missing-dependencies))))
+      (if (@index-ref package-id)
+	(throw (Exception. (str "Package "
+				(pr-str package-id)
+				" already exists")))
+	(let [package-dir (make-unique-dir install-dir)
+	      package-metadata (assoc (builder package-dir
+					       index-ref)
+				 :path (tk/get-path package-dir))]
+	  (dosync
+	   (alter index-ref
+		  assoc
+		  package-id package-metadata)))))))
 
 (defn unreferenced-folders
   "returns folders that aren't referenced in the index"
@@ -152,7 +162,9 @@ calls builder with package-dir and then updates package-index. All
       d)))
 
 (defn uninstall
-  "removes package from worker"
+  "removes package from worker: NOTE UNSAFE, does not check if
+  something depends on what you are uninstalling. You will need to
+  check this manually."
   [deploy-dir index-ref pid]
   (dosync
    (let [package-metadata (@index-ref pid)]

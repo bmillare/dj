@@ -271,22 +271,22 @@
 (defmethod cp [remote-file java.io.File] [in ^java.io.File out]
 	   (let [{:keys [path username server port]} in]
 	     (sh-exception
-	      (sh/sh "scp" "-r" "-P" (str port) (str username "@" server ":" path) (.getCanonicalPath out)))))
+	      (sh/sh "ionice" "-c" "3" "scp" "-r" "-P" (str port) (str username "@" server ":" path) (.getCanonicalPath out)))))
 
 (defmethod cp [java.io.File remote-file] [^java.io.File in out]
 	   (let [{:keys [path username server port]} out]
 	     (sh-exception
-	      (sh/sh "scp" "-r" "-P" (str port) (.getCanonicalPath in) (str username "@" server ":" path)))))
+	      (sh/sh "ionice" "-c" "3" "scp" "-r" "-P" (str port) (.getCanonicalPath in) (str username "@" server ":" path)))))
 
 (defmethod cp [remote-file java.lang.String] [in ^java.lang.String out]
 	   (let [{:keys [path username server port]} in]
 	     (sh-exception
-	      (sh/sh "scp" "-r" "-P" (str port) (str username "@" server ":" path) out))))
+	      (sh/sh "ionice" "-c" "3" "scp" "-r" "-P" (str port) (str username "@" server ":" path) out))))
 
 (defmethod cp [java.lang.String remote-file] [^java.lang.String in out]
 	   (let [{:keys [path username server port]} out]
 	     (sh-exception
-	      (sh/sh "scp" "-r" "-P" (str port) in (str username "@" server ":" path)))))
+	      (sh/sh "ionice" "-c" "3" "scp" "-r" "-P" (str port) in (str username "@" server ":" path)))))
 
 (defmethod cp [remote-file remote-file] [in out]
 	   (throw (Exception. "not implemented")))
@@ -302,7 +302,7 @@
 (defmethod cp-contents [remote-file java.io.File] [in ^java.io.File out]
 	   (let [{:keys [path username server port]} in]
 	     (sh-exception
-	      (sh/sh "sh" "-c" (str "scp -r -P " port " "
+	      (sh/sh "sh" "-c" (str "ionice -c 3 scp -r -P " port " "
 				    username "@" server ":"
 				    path "/* "
 				    (.getCanonicalPath out))))))
@@ -310,7 +310,7 @@
 (defmethod cp-contents [java.io.File remote-file] [^java.io.File in out]
 	   (let [{:keys [path username server port]} out]
 	     (sh-exception
-	      (sh/sh "sh" "-c" (str "scp -r -P " port " "
+	      (sh/sh "sh" "-c" (str "ionice -c 3 scp -r -P " port " "
 				    (.getCanonicalPath in) "/* "
 				    username "@" server ":"
 				    path)))))
