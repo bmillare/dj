@@ -105,3 +105,12 @@
 (defn resource-as-str [str-path]
   (let [is (.getResourceAsStream (get-current-classloader) str-path)]
     (apply str (map char (take-while #(not= % -1) (repeatedly #(.read is)))))))
+
+(defn find-resource
+  (^java.io.File [relative-path]
+     (find-resource relative-path (.getParent (get-current-classloader))))
+  (^java.io.File [relative-path ^ClassLoader classloader]
+     (tk/new-file
+      (.getPath
+       (.getResource classloader
+		     relative-path)))))

@@ -15,31 +15,32 @@
 			  (.split (System/getProperty "java.class.path")
 				  (System/getProperty "path.separator")))))
 
-(defn url-to-file [url]
+(defn url-to-file [^java.net.URL url]
   (try
-   (java.io.File. (.toURI url))
+   (java.io.File. ^String (.toURI url))
    (catch URISyntaxException e
        (tk/new-file (.getPath url)))))
 
-(defn get-classpaths [classloader]
+(defn get-classpaths [^java.net.URLClassLoader classloader]
   (let [files (map url-to-file (.getURLs classloader))]
     (if (empty? files)
       +boot-classpaths+
       (apply conj +boot-classpaths+ files))))
 
-(defn get-current-classloader []
+(defn get-current-classloader ^ClassLoader []
   (.getContextClassLoader (Thread/currentThread)))
 
 (defn unchecked-add-to-classpath!
   "adds file to classpath for classloader"
-  [classloader f]
+  [classloader ^java.io.File f]
   (let [clazz (class classloader)]
     (if (= clazz
 	   sun.misc.Launcher$AppClassLoader)
       (let [method (.getDeclaredMethod clazz "appendToClassPathForInstrumentation" (into-array Class [java.lang.String]))] 
 	(.setAccessible method true)
 	(.invoke method classloader (into-array Object [(.getPath f)])))
-      (.addURL classloader (.toURL (.toURI f)))))
+      (.addURL ^java.net.URLClassLoader classloader
+	       ^java.net.URL (.toURL ^java.net.URI (.toURI f)))))
   f)
 
 (defn reload-class-file
