@@ -17,7 +17,7 @@
 
 (defn url-to-file [^java.net.URL url]
   (try
-   (java.io.File. ^String (.toURI url))
+   (java.io.File. ^java.net.URI (.toURI url))
    (catch URISyntaxException e
        (tk/new-file (.getPath url)))))
 
