@@ -12,7 +12,7 @@
   (let [dj-dir (System/getProperty "user.dir")
 	opt-dir (str-path dj-dir "opt")
 	dispatch {"clojure" (fn []
-			      (let [clojure-version "1.4.0-beta5"
+			      (let [clojure-version "1.4.0-beta7"
 				    clojure-prefix (str "clojure-" clojure-version)
 				    latest-url (str "http://repo1.maven.org/maven2/org/clojure/clojure/" clojure-version "/" clojure-prefix ".zip")
 				    clojure-sym (str-path dj-dir "lib" "clojure.jar")]
