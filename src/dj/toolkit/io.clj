@@ -129,10 +129,11 @@
       (seq (.listFiles dest)))
   Irm
   (rm [dest]
-      (when (.isDirectory dest)
-	(doseq [f (ls dest)]
-	  (rm f)))
-      (.delete dest))
+      (when (exists? dest)
+	(when (.isDirectory dest)
+	 (doseq [f (ls dest)]
+	   (rm f)))
+	(.delete dest)))
   Imv
   (mv [target ^java.io.File dest]
       (if (.isDirectory dest)
@@ -217,11 +218,13 @@
       (ssh username server port (shify ["mv" path dest])))
   Iparent
   (parent [f]
-	  (apply str (if (= (first (:path f))
-			    \/)
-		       "/"
-		       "")
-		 (interpose "/" (filter #(not (empty? %)) (drop-last (.split ^String (:path f) "/"))))))
+	  (assoc f
+	    :path
+	    (apply str (if (= (first (:path f))
+			      \/)
+			 "/"
+			 "")
+		   (interpose "/" (filter #(not (empty? %)) (drop-last (.split ^String (:path f) "/")))))))
   Iget-path
   (get-path [f]
 	    path)

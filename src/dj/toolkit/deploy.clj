@@ -11,12 +11,12 @@
 ;; worker - computer, something capable of storing files and
 ;; performing work. Every worker must have a directory for 'deploy' to
 ;; work with. This will be aliased as 'deploy-dir'. This directory
-;; must have a file 'index.clj' (described below), a 'repo' directory,
+;; must have a file 'index.clj' (described below), a 'packages' directory,
 ;; for a common place (but not limited to) to store packages, and a
 ;; 'tmp' directory, for jobs to safely, store intermediates and
 ;; results.
 
-;; path/[index.clj, repo, tmp]
+;; path/[index.clj, packages, tmp]
 
 ;; package - a folder containing files. Installing it should only
 ;; require copying the files and updating the index. The name of the
@@ -128,7 +128,7 @@ overwrite the value."
 calls builder with package-dir and then updates package-index. All
   builders must return metadata."
   [deploy-dir index-ref {:keys [package-id dependencies builder]}]
-  (let [install-dir (tk/relative-to deploy-dir "repo")
+  (let [install-dir (tk/relative-to deploy-dir "packages")
 	missing-dependencies (seq
 			      (filter #(not (@index-ref %))
 				      dependencies))]
@@ -142,7 +142,7 @@ calls builder with package-dir and then updates package-index. All
 	(let [package-dir (make-unique-dir install-dir)
 	      package-metadata (assoc (builder package-dir
 					       index-ref)
-				 :path (tk/get-path package-dir))]
+				 :path (tk/get-name package-dir))]
 	  (dosync
 	   (alter index-ref
 		  assoc
@@ -151,7 +151,7 @@ calls builder with package-dir and then updates package-index. All
 (defn unreferenced-folders
   "returns folders that aren't referenced in the index"
   [deploy-dir index-ref]
-  (let [all-dirs (tk/ls (tk/relative-to deploy-dir "repo"))
+  (let [all-dirs (tk/ls (tk/relative-to deploy-dir "packages"))
 	paths (set
 	       (map :path
 		    (filter :path
