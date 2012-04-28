@@ -276,7 +276,8 @@ snapshot"
 			   name-version-group))]
 	  :when d-data]
       (let [name (:name d-data)
-	    version (:version d-data)
+	    version ^String (or (:version d-data)
+				(:version parent))
 	    group (:group d-data)]
 	(new-maven-dependency name
 			      (if (.startsWith version "$")
