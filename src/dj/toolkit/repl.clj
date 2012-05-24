@@ -69,7 +69,6 @@ return a string"
   [command & [ns]]
   (let [ns (the-ns ns)]
     (case command
-	  :all (all-ns)
 	  :interns (vals (ns-interns ns))
 	  :publics (vals (ns-publics ns))
 	  :refers (vals (ns-refers ns)))))
@@ -128,6 +127,9 @@ return a string"
   "returns list of all possible symbol completions, ideally cache this and update only during saves"
   [ns-arg]
   (let [all-use-mappings (map str (keys (ns-map ns-arg)))
+	full-class-names (for [v (vals (ns-map ns-arg))
+			       :when (instance? java.lang.Class v)]
+			   (pr-str v))
 	all-require-interns (mapcat (fn [a-ns]
 				      (map #(str (ns-name a-ns) "/" %)
 					   (keys (ns-interns a-ns))))
@@ -140,6 +142,7 @@ return a string"
 				    (keys aliases)))]
     
     (concat all-use-mappings
+	    full-class-names
 	    all-require-interns
 	    all-alias-interns)))
 
@@ -211,8 +214,7 @@ return a string"
 (defn unmap-ns
   "unmap everything from a ns"
   [ns]
-  (doseq [s (filter (complement #{'unmap-ns})
-		    (map first (ns-interns ns)))]
+  (doseq [s (keys (ns-interns ns))]
     (ns-unmap ns s)))
 
 (defn var-src-fn [sym]
