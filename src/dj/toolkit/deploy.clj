@@ -185,6 +185,82 @@ calls builder with package-dir and then updates package-index. All
 
 ;; -------------------------------------------------------------------
 
+;; for these types of functions, you are always responsible for
+;; yourself, clearing, setting, queuing, but always delegate others
+;; work
+(defn install
+  "recursively installs id and delegates appropriately for
+  dependencies"
+  [transactor args-m]
+  (let [{:keys [id need-to-queue installer]} args-m
+	dependencies (:dependencies id)
+	;; we do this to minimize the time spent in a transaction
+	end-op (ref nil)
+	set-end-op #(ref-set end-op %)
+	op {:operation :install
+	    :id id}
+	do-queue (fn []
+		   (doall (pmap (fn [f]
+				  (f transactor))
+				need-to-queue))
+		   (dosync
+		    (alter transactor
+			   update-in
+			   [:dependency-queue]
+			   dissoc
+			   op)))
+	do-nothing (fn [])
+	do-installer (fn []
+		       (installer id transactor)
+		       (dosync
+			(alter transactor
+			       update-in
+			       [:running-tasks]
+			       dissoc
+			       op)))
+	install-dependencies (fn []
+			       ;; only add self to queue on first dependency
+			       (let [f-id (first dependencies)]
+				 (install transactor {:id f-id
+						      :need-to-queue need-to-queue
+						      :installer installer}))
+			       (doall (pmap (fn [id]
+					      (install transactor {:id id
+								   :installer installer}))
+					    (rest dependencies))))]
+    (dosync
+     (let [t @transactor
+	   idx (:index t)
+	   rt (:running-tasks t)
+	   dq (:dependency-queue t)]
+       (if (idx id)
+	 (set-end-op do-queue)
+	 (if (rt op)
+	   (do
+	     (alter transactor
+		    update-in
+		    [:dependency-queue op]
+		    set/union
+		    need-to-queue)
+	     (set-end-op do-nothing))
+	   (let [missing-dependencies (filter #(idx %) dependencies)]
+	     ;; I could also check running-dependencies, but install
+	     ;; already checks for this
+	     (if (empty? missing-dependencies)
+	       (do
+		 (alter transactor
+			assoc-in
+			[:running-tasks]
+			op
+			:running)
+		 (set-end-op (fn []
+			       (do-installer)
+			       (do-queue))))
+	       (set-end-op install-dependencies)))))))
+    (@end-op)
+    nil))
+
+;; -------------------------------------------------------------------
 ;; Get run to work,
 (defprotocol IShIn
   (sh-in [dir sh-script] "run script in directory"))
