@@ -12,7 +12,6 @@
 (tk/import-fn #'dj.deps.maven/ls-repo)
 
 (def repository-urls dj.deps.maven/repository-urls)
-(def system-root (java.io.File. (System/getProperty "user.dir")))
 
 (defn add-repository! [url-str]
   (swap! repository-urls
@@ -27,7 +26,10 @@
 
    ASSUMES a jars with the same path are identical"
   ([classloader path]
-     (let [f (tk/new-file path)]
+     (let [f (if (= (first path)
+		    \/)
+	       (tk/new-file path)
+	       (tk/new-file dj.core/system-root path))]
        (when-not ((cl/get-classpaths classloader) f)
 	 (dj.classloader/unchecked-add-to-classpath! classloader f))))
   ([path]
