@@ -12,6 +12,7 @@
 (tk/import-fn #'dj.deps.maven/ls-repo)
 
 (def repository-urls dj.deps.maven/repository-urls)
+(def system-root (java.io.File. (System/getProperty "user.dir")))
 
 (defn add-repository! [url-str]
   (swap! repository-urls
