@@ -79,7 +79,7 @@
 			    "src/cljs"
 			    "test/cljs"]))]
     (doseq [p paths]
-      (add-to-classpath! p))))
+      (add-to-classpath! (.getPath p)))))
 
 (defn obj-seq-print* [s type-name obj-str-fn]
   (println (str type-name ": " (count s) " found"))
