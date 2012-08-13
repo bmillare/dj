@@ -1,119 +1,155 @@
 (ns dj
-  (:require [dj.toolkit :as tk])
-  (:require [dj.toolkit.experimental.meta :as djmeta])
-  (:require [dj.classloader :as cl])
-  (:require [dj.deps core project maven])
-  (:require [dj.core]))
+  (:require [clojure.walk]))
 
-(tk/import-fn #'cl/get-classpaths)
-(tk/import-fn #'cl/get-current-classloader)
-(tk/import-fn #'cl/reload-class-file)
-(tk/import-fn #'cl/reset-native-paths!)
-(tk/import-fn #'dj.deps.maven/ls-repo)
+(def system-root (java.io.File. (System/getProperty "user.dir")))
 
-(def repository-urls dj.deps.maven/repository-urls)
-
-(defn add-repository! [url-str]
-  (swap! repository-urls
-	 (fn [coll v]
-	   (if (some #{v} coll)
-	     coll
-	     (conj coll (dj.deps.maven/validate-repository-url v))))
-	 url-str))
-
-(defn add-to-classpath!
-  "given file, a jar or a directory, adds it to classpath for classloader
-
-   ASSUMES a jars with the same path are identical"
-  ([classloader path]
-     (let [f (if (= (first path)
+(defn str-path
+  "joins paths defined in strings together (unix)"
+  [parent & children]
+  (apply str (if (= (first parent)
 		    \/)
-	       (tk/new-file path)
-	       (tk/new-file dj.core/system-root path))]
-       (when-not ((cl/get-classpaths classloader) f)
-	 (dj.classloader/unchecked-add-to-classpath! classloader f))))
-  ([path]
-     (add-to-classpath! (.getParent (cl/get-current-classloader))
-			path)))
+	       "/"
+	       "")
+	 (interpose "/" (filter #(not (empty? %)) (mapcat #(.split (str %) "/") (list* parent children))))))
 
-(defn add-dependencies!
-  "given a classloader (default is parent classloader), takes a list
-  of strings or project.clj dependencies ie. [foo/bar \"1.2.2\"],
-  options passed to obtain-dependencies!"
-  ([dependencies]
-     (add-dependencies! (.getParent (cl/get-current-classloader))
-			dependencies
-			{:verbose true :offline true}))
-  ([classloader dependencies options]
-     (let [d-objs (for [d dependencies
-			:let [r (cond
-				 (vector? d) (dj.deps.core/parse d)
-				 (string? d) (dj.deps.core/parse d :project-dependency)
-				 (symbol? d) (dj.deps.core/parse d :project-dependency))]
-			:when r]
-		    r)]
-       (cl/add-dependencies! classloader d-objs options))))
+(defn duplicates
+  "given a sequable list, returns a vector of the duplicate entries in
+  the order that they were found"
+  [s]
+  (loop [ns s
+	 test #{}
+	 duplicates []]
+    (if-let [x (first ns)]
+      (if (test x)
+	(recur (next ns)
+	       test
+	       (conj duplicates x))
+	(recur (next ns)
+	       (conj test x)
+	       duplicates))
+      duplicates)))
 
-(defn add-native!
-  "given a classloader (default is parent classloader), takes a list
-  of strings or project.clj native dependencies ie. [foo/bar
-  \"1.2.2\"], options passed to obtain-dependencies!"
-  ([dependencies]
-     (add-native! (.getParent (cl/get-current-classloader))
-			dependencies
-			{:verbose true :offline true}))
-  ([classloader dependencies options]
-     (cl/add-dependencies! classloader
-			   (for [d dependencies
-				 :let [r (dj.deps.core/parse d :native-dependency)]
-				 :when r]
-			     r)
-			   options)))
+(defn plurality
+  "return the first largest count item in all-items"
+  [& all]
+  (first (reduce (fn [[k0 v0] [k1 v1]]
+		   (if (> v1 v0)
+		     [k1 v1]
+		     [k0 v0]))
+		 (persistent! (reduce (fn [counts item]
+					(if (counts item)
+					  (assoc! counts item (inc (counts item)))
+					  (assoc! counts item 1)))
+				      (transient {})
+				      all)))))
 
-(defn add-cljs-to-classpath! []
-  (let [cljs-dir (tk/new-file dj.core/system-root "usr/src/clojurescript")
-	paths (concat (filter #(not= % (tk/new-file cljs-dir "lib/clojure.jar"))
-			      (tk/ls (tk/new-file cljs-dir "lib")))
-		      (map #(tk/new-file cljs-dir %)
-			   ["src/clj"
-			    "src/cljs"
-			    "test/cljs"]))]
-    (doseq [p paths]
-      (add-to-classpath! (.getPath p)))))
+;; the doalls are necessary or else the maps are realized all at once at the end,
+;; I want them realized as we traverse the seq
+(defn min-max-by-columns [s]
+  (reduce (fn [[smallest largest] y]
+	    [(doall (map min smallest y)) (doall (map max largest y))])
+	  [(first s) (first s)]
+	  s))
 
-(defn obj-seq-print* [s type-name obj-str-fn]
-  (println (str type-name ": " (count s) " found"))
-  (doseq [x s]
-    (println (obj-str-fn x))))
+(defn update-all-in
+  "returns map of application of fn f to all values in map m"
+  [m f]
+  (reduce #(update-in %1
+		      [%2]
+		      f)
+	  m
+	  (keys m)))
 
-(defn usr-search
-  "search local repositories for files matching query"
-  [query]
-  (obj-seq-print* (djmeta/toog* query
-				(djmeta/files-in-folders [(tk/new-file dj.core/system-root "usr")])
-				#(.getPath %))
-		  "Files"
-		  #(.getPath %)))
+;; Taken from Zachary Tellman's Potemkin
+(defmacro import-fn 
+  "Given a function in another namespace, defines a function by
+   the same name in the current namespace.  Argument lists and
+   doc-strings are preserved."
+  [sym]
+  (let [m (meta (eval sym))
+        m (meta (intern (:ns m) (:name m)))
+        n (:name m)
+        arglists (:arglists m)
+        doc (:doc m)]
+    (list `def (with-meta n {:doc doc :arglists (list 'quote arglists)}) (eval sym))))
 
-(defn local-jar-versions
-  "search local maven repositories for jars matching query"
-  [query]
-  (obj-seq-print* (djmeta/toog* (str query " jar")
-				(djmeta/files-in-folders [(tk/new-file dj.core/system-root "usr/maven")
-							  (tk/new-file dj.core/system-root "usr/native")])
-				#(.getName %))
-		  "jars"
-		  #(.getName %)))
+(defn filter-fns
+  "like filter, but takes a list of classifier functions instead of a
+  single classifier"
+  [fns rows]
+  (filter #(every?
+	    (fn [f]
+	      (f %))
+	    fns)
+	  rows))
 
-(defn resource-as-str [str-path]
-  (let [is (.getResourceAsStream (get-current-classloader) str-path)]
-    (apply str (map char (take-while #(not= % -1) (repeatedly #(.read is)))))))
+(defn replace-map-unchecked
+  "given an input string and a hash-map, returns a new string with all
+  keys in map found in input replaced with the value of the key. DOES
+  NOT java.util.regex.Matcher/quoteReplacement replace strings"
+  [s m]
+  (clojure.string/replace s
+			  (re-pattern (apply str (interpose "|" (map #(java.util.regex.Pattern/quote %) (keys m)))))
+			  m))
 
-(defn find-resource
-  (^java.io.File [relative-path]
-     (find-resource relative-path (.getParent (get-current-classloader))))
-  (^java.io.File [relative-path ^ClassLoader classloader]
-     (tk/new-file
-      (.getPath
-       (.getResource classloader
-		     relative-path)))))
+(defn replace-map
+  "given an input string and a hash-map, returns a new string with all
+  keys in map found in input replaced with the value of the key"
+  [s m]
+  (replace-map-unchecked s (reduce #(assoc %1 %2
+				      (java.util.regex.Matcher/quoteReplacement (%1 %2)))
+				   m
+				   (keys m))))
+
+(defn re-find-all
+  "given a regular expression re, and an input string txt, returns a vector of
+  all sequential matches of re in txt"
+  [^java.util.regex.Pattern re ^java.lang.CharSequence txt]
+  (let [m (.matcher re txt)]
+    (loop [matches []]
+      (if (.find m)
+	(recur (conj matches (.group m)))
+	matches))))
+
+(defn substring
+  "extends builtin subs to have negative indexes. A negative index
+  will implicitly mean "
+  ([s start end]
+     (let [s-size (count s)
+	   s-idx (if (< start 0)
+		   (+ s-size start)
+		   start)
+	   e-idx (if (< end 0)
+		   (+ s-size end)
+		   end)]
+       (subs s s-idx e-idx)))
+  ([s start]
+     (let [s-size (count s)
+	   s-idx (if (< start 0)
+		   (+ s-size start)
+		   start)]
+       (subs s s-idx))))
+
+(defn- bang-symbol?
+  "Returns true, if sym is a symbol with name ending in a exclamation
+  mark (bang)."
+  [sym]
+  (and (symbol? sym)
+       (= (last (name sym)) \!)))
+
+(defmacro defmacro!
+  "Defines a macro name with the given docstring, args, and body.
+  All args ending in an exclamation mark (!, bang) will be evaluated only once
+  in the expansion, even if they are unquoted at several places in body.  This
+  is especially important for args whose evaluation has side-effecs or who are
+  expensive to evaluate."
+  [name docstring args & body]
+  (let [bang-syms (filter bang-symbol? args)
+        rep-map (apply hash-map
+                       (mapcat (fn [s] [s `(quote ~(gensym))])
+                               bang-syms))]
+    `(defmacro ~name
+       ~docstring
+       ~args
+       `(let ~~(vec (mapcat (fn [[s t]] [t s]) rep-map))
+          ~(clojure.walk/postwalk-replace ~rep-map ~@body)))))

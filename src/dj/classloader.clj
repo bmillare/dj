@@ -1,31 +1,25 @@
 (ns dj.classloader
   (:import [java.net URISyntaxException])
-  (:require [dj.toolkit :as tk])
-  (:require [dj.deps])
-  (:require [clojure.set :as set]))
+  (:require [dj]
+	    [dj.io :as io]
+	    [clojure.set :as set]))
 
-;; BUG
-;; for future, nailgun like dj, need to set parent of brand new
-;; urlclassloader to be root so that separate clojure instances can be run
-;; also need to use try and finally to restore classloader
-;; or also do invoke in and in different thread style
-
-(def +boot-classpaths+
-     (apply conj #{} (map #(tk/new-file %)
+(def boot-classpaths
+     (apply conj #{} (map #(io/file %)
 			  (.split (System/getProperty "java.class.path")
 				  (System/getProperty "path.separator")))))
 
 (defn url-to-file [^java.net.URL url]
   (try
-   (java.io.File. ^java.net.URI (.toURI url))
-   (catch URISyntaxException e
-       (tk/new-file (.getPath url)))))
+    (java.io.File. ^java.net.URI (.toURI url))
+    (catch URISyntaxException e
+      (io/file (.getPath url)))))
 
 (defn get-classpaths [^java.net.URLClassLoader classloader]
   (let [files (map url-to-file (.getURLs classloader))]
     (if (empty? files)
-      +boot-classpaths+
-      (apply conj +boot-classpaths+ files))))
+      boot-classpaths
+      (apply conj boot-classpaths files))))
 
 (defn get-current-classloader ^ClassLoader []
   (.getContextClassLoader (Thread/currentThread)))
@@ -43,16 +37,31 @@
 	       ^java.net.URL (.toURL ^java.net.URI (.toURI f)))))
   f)
 
+(defn add-to-classpath!
+  "given file, a jar or a directory, adds it to classpath for classloader
+
+   ASSUMES a jars with the same path are identical"
+  ([classloader path]
+     (let [f (if (= (first path)
+		    \/)
+	       (io/file path)
+	       (io/file dj/system-root path))]
+       (when-not ((get-classpaths classloader) f)
+	 (unchecked-add-to-classpath! classloader f))))
+  ([path]
+     (add-to-classpath! (.getParent (get-current-classloader))
+			path)))
+
 (defn reload-class-file
   "Reload a .class file during runtime, this allows you to recompile
   java components, and reload their class files to get the updated
   class definitions"
   [path]
-  (let [f (tk/new-file path)
+  (let [f (io/file path)
 	classname (second (re-matches #"(\w+)\.class" (.getName f)))]
     (.defineClass (clojure.lang.DynamicClassLoader.)
 		  classname
-		  (tk/to-byte-array f)
+		  (io/to-byte-array f)
 		  nil)))
 
 (defn reset-native-paths! [native-paths]
@@ -65,13 +74,15 @@
     (.set field clazz nil)
     (System/setProperty "java.library.path" (apply str (interpose ";" native-paths)))))
 
-(defn add-dependencies!
-  "given classloader, takes dependency objects and determines their
-  dependencies with options"
-  [classloader dependency-objects options]
-  (let [existing-paths (get-classpaths classloader)
-	[src-paths jar-paths native-paths] (dj.deps/obtain-dependencies! dependency-objects options)
-	src-jar-paths (set/difference (set/union (set src-paths) (set jar-paths)) existing-paths)]
-    (reset-native-paths! native-paths)
-    (doseq [p src-jar-paths]
-      (unchecked-add-to-classpath! classloader p))))
+(defn resource-as-str [str-path]
+  (let [is (.getResourceAsStream (get-current-classloader) str-path)]
+    (apply str (map char (take-while #(not= % -1) (repeatedly #(.read is)))))))
+
+(defn find-resource
+  (^java.io.File [relative-path]
+     (find-resource relative-path (.getParent (get-current-classloader))))
+  (^java.io.File [relative-path ^ClassLoader classloader]
+     (io/file
+      (.getPath
+       (.getResource classloader
+		     relative-path)))))

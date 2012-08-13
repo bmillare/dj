@@ -1,1 +1,0 @@
-java -Duser.dir"C:\Path to dj" -cp "C:\Path to dj\lib\clojure.jar;C:\Path to dj\src" clojure.main -e "(use 'dj.cli) (main \"repl\")"

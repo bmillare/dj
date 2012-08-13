@@ -1,9 +1,1 @@
-etc/
-opt/
-sbin/
-tmp/
 usr/
-lib/
-classes/
-var/
-src/scripts/*.class
