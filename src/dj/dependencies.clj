@@ -4,11 +4,11 @@
 	    [dj.io]
 	    [dj.git]))
 
-(defn project-read-str
-  "like leiningen.core.project/read but from a string instead of a file"
-  ([proj-str profiles]
+(defn eval-project-form
+  "like leiningen.core.project/read but from a clojure form instead of a file"
+  ([project-form profiles]
      (binding [*ns* (the-ns 'leiningen.core.project)]
-       (eval (read-string proj-str)))
+       (eval project-form))
      (let [project (resolve 'leiningen.core.project/project)]
        (when-not project
 	 (throw (Exception. "project.clj must define project map.")))
@@ -16,7 +16,7 @@
        (ns-unmap 'leiningen.core.project 'project)
        (-> (reduce project/apply-middleware @project (:middleware @project))
 	   (project/merge-profiles profiles))))
-  ([proj-str] (project-read-str proj-str [:default])))
+  ([project-form] (eval-project-form project-form [:default])))
 
 (defmulti resolve-dj-dependency :dependency-type)
 
@@ -41,7 +41,8 @@
   (let [project-dir (dj.io/file dj/system-root "usr/src" relative-path)
 	project-data (-> (dj.io/file project-dir "project.clj")
 			 slurp
-			 project-read-str
+			 read-string
+			 eval-project-form
 			 (assoc :root (dj.io/get-path project-dir)
 				:eval-in :leiningen))]
     (if-let [dj-dependencies (:dj/dependencies project-data)]

@@ -21,7 +21,8 @@
 
 (defn install-cljs! []
   (let [cljs-dir (dj.io/file dj/system-root "usr/src")]
-    #_ (dj.git/clone "git://github.com/clojure/clojurescript.git"
-		  cljs-dir)
-    (sh/sh "script/bootstrap"
-	   :dir (dj.io/file cljs-dir "clojurescript"))))
+    (when-not (dj.io/exists? (dj.io/file cljs-dir "clojurescript"))
+      (dj.git/clone "git://github.com/clojure/clojurescript.git"
+		    cljs-dir)
+      (sh/sh "script/bootstrap"
+	     :dir (dj.io/file cljs-dir "clojurescript")))))
