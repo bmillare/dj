@@ -20,25 +20,6 @@
 
 (defmulti resolve-dj-dependency :dependency-type)
 
-(defn resolve-project [relative-path]
-  (let [project-dir (dj.io/file dj/system-root "usr/src" relative-path)
-	project-data (-> (dj.io/file project-dir "project.clj")
-			 slurp
-			 project-read-str
-			 (assoc :root (dj.io/get-path project-dir)
-				:eval-in :leiningen))]
-    (if-let [dj-dependencies (:dj/dependencies project-data)]
-      (doall (map (comp resolve-dj-dependency parse-dj-project-dependency) dj-dependencies))
-      (project/init-project project-data))))
-;; we want to be able to resolve a project, then we can learn to resolve a git repo
-
-;; keywords might clash, one potential fix is to used namespaced
-;; keywords, i can guarantee that all the keywords are not fully
-;; qualified
-
-;; what i need
-;; -a string parser that will return a data object with details of the dependency
-
 (defn parse-dj-project-dependency [entry]
   (if (= java.lang.String (type entry))
     (let [components (.split #"/" entry)]
@@ -55,6 +36,23 @@
 	   :name (last components)
 	   :relative-path entry})))
     entry))
+
+(defn resolve-project [relative-path]
+  (let [project-dir (dj.io/file dj/system-root "usr/src" relative-path)
+	project-data (-> (dj.io/file project-dir "project.clj")
+			 slurp
+			 project-read-str
+			 (assoc :root (dj.io/get-path project-dir)
+				:eval-in :leiningen))]
+    (if-let [dj-dependencies (:dj/dependencies project-data)]
+      (doall (map (comp resolve-dj-dependency parse-dj-project-dependency) dj-dependencies))
+      (project/init-project project-data))))
+;; we want to be able to resolve a project, then we can learn to resolve a git repo
+
+;; keywords might clash, one potential fix is to used namespaced
+;; keywords, i can guarantee that all the keywords are not fully
+;; qualified
+
 
 ;; first I need the local path, this is from the name?  i'd like a way
 ;; to do namespace as in nested folders, but these git folders are
