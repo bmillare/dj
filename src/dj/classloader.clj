@@ -8,6 +8,7 @@
 
 (dj/import-fn #'pom/add-classpath)
 (dj/import-fn #'pom/get-classpath)
+(dj/import-fn #'pom/classloader-hierarchy)
 
 (defn reload-class-file
   "Reload a .class file during runtime, this allows you to recompile

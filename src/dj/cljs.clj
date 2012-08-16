@@ -15,7 +15,7 @@
 			       "src/cljs"
 			       "test/cljs"]))]
        (doseq [p paths]
-	 (dj.classloader/add-to-classpath! (.getPath ^java.io.File p)))))
+	 (dj.classloader/add-classpath (.getPath ^java.io.File p)))))
   ([]
      (add-cljs-to-classpath! (dj.io/file dj/system-root "usr/src/clojurescript"))))
 

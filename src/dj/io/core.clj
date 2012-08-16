@@ -11,6 +11,10 @@
 						     p))
 						 paths))))
 
+(defn absolute-path? [str-path]
+  (= (first str-path)
+	 \/))
+
 (defn sh-exception [result]
   (if (= (:exit result) 0)
     (:out result)
