@@ -1,6 +1,5 @@
 (ns dj.dependencies
   (:require [leiningen.core.project :as project]
-	    [dj.repl]
 	    [dj]
 	    [dj.io]
 	    [dj.git]))
@@ -44,7 +43,7 @@
     (dj.io/file dj/system-root "usr/src" path)))
 
 (defn resolve-project [relative-path]
-  (let [project-dir (resolve-path (dj.repl/log relative-path))
+  (let [project-dir (resolve-path relative-path)
 	project-data (-> (dj.io/file project-dir "project.clj")
 			 slurp
 			 read-string
