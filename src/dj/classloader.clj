@@ -32,6 +32,11 @@
     (.set field clazz nil)
     (System/setProperty "java.library.path" (apply str (interpose ";" native-paths)))))
 
+(defn append-native-path! [new-paths]
+  (let [previous-paths (clojure.string/split (System/getProperty "java.library.path")
+					     #":|;")]
+    (reset-native-paths! (concat previous-paths new-paths))))
+
 (defn resource-as-str [str-path]
   (let [is (.getResourceAsStream (first (pom/classloader-hierarchy)) str-path)]
     (apply str (map char (take-while #(not= % -1) (repeatedly #(.read is)))))))
