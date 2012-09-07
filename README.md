@@ -1,6 +1,6 @@
 # dj 2.0.0
 
-# Motivation
+## Motivation
 
 "dj takes the cacaphony of java, git, clojure, clojurescript and build
 tools and mixes it into something harmonious."
@@ -11,7 +11,7 @@ distribution.
 
 Lots of changes in the new branch, more to come.
 
-# Basic Usage
+## Basic Usage
 
  * Install by cloning. Depends on leiningen 2.0 > preview10
 
@@ -20,7 +20,7 @@ Lots of changes in the new branch, more to come.
  * (dj.dependencies/resolve-project "project-name") to dynamically
    load a project.
 
-# Discussion
+## Discussion
 
  * Recommends creating a script that cd's into the dj's directory and
    runs lein repl, this allows you to run dj anywhere.
@@ -29,12 +29,12 @@ Lots of changes in the new branch, more to come.
    native-path handling of dj. However, it may be useful if you depend
    on a newer version of clojure.
 
-# Author
+## Author
 
 Brent Millare
 brent.millare@gmail.com
 
-# License
+## License
 
 Copyright (c) Brent Millare. All rights reserved. The use and
 distribution terms for this software are covered by the Eclipse Public
