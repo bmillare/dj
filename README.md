@@ -17,7 +17,7 @@ Lots of changes in the new branch, more to come.
 
  * `cd` into the dj directory and run `lein repl`
 
- * (dj.dependencies/resolve-project "project-name") to dynamically
+ * `(dj.dependencies/resolve-project "project-name")` to dynamically
    load a project.
 
 ## Discussion
