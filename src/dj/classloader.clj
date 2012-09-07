@@ -30,7 +30,7 @@
 	field (.getDeclaredField clazz "sys_paths")] 
     (.setAccessible field true)
     (.set field clazz nil)
-    (System/setProperty "java.library.path" (apply str (interpose ";" native-paths)))))
+    (System/setProperty "java.library.path" (apply str (interpose ":" native-paths)))))
 
 (defn append-native-path! [new-paths]
   (let [previous-paths (clojure.string/split (System/getProperty "java.library.path")

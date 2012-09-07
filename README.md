@@ -11,6 +11,24 @@ distribution.
 
 Lots of changes in the new branch, more to come.
 
+# Basic Usage
+
+ * Install by cloning. Depends on leiningen 2.0 > preview10
+
+ * `cd` into the dj directory and run `lein repl`
+
+ * (dj.dependencies/resolve-project "project-name") to dynamically
+   load a project.
+
+# Discussion
+
+ * Recommends creating a script that cd's into the dj's directory and
+   runs lein repl, this allows you to run dj anywhere.
+
+ * Profiles were found not necessary for native dependencies because of
+   native-path handling of dj. However, it may be useful if you depend
+   on a newer version of clojure.
+
 # Author
 
 Brent Millare
