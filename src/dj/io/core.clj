@@ -203,3 +203,7 @@ possible without slowing down ref"
   (with-open [buffer (java.io.ByteArrayOutputStream.)]
     (clojure.java.io/copy x buffer)
     (.toByteArray buffer)))
+
+(defn copy-url-to-file [url ^java.io.File f]
+  (org.apache.commons.io.FileUtils/copyURLToFile (java.net.URL. url)
+						 f))
