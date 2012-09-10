@@ -20,10 +20,6 @@
   ([]
      (add-cljs-to-classpath! (dj.io/file dj/system-root "usr/src/clojurescript"))))
 
-(defn resolve-repl-dependencies []
-  (add-cljs-to-classpath!)
-  (load "dj/cljs/piggieback"))
-
 (defn install-cljs! []
   (let [cljs-dir (dj.io/file dj/system-root "usr/src")]
     (when-not (dj.io/exists? (dj.io/file cljs-dir "clojurescript"))
