@@ -9,6 +9,7 @@
 
 (require 'clojure-mode)
 (add-hook 'clojure-mode-hook (lambda () (paredit-mode +1)))
+(add-to-list 'auto-mode-alist '("\\.cljs$" . clojure-mode))
 (require 'paredit)
 (define-key paredit-mode-map "{" 'paredit-open-brace)
 (define-key paredit-mode-map "}" 'paredit-close-brace)
