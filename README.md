@@ -13,7 +13,7 @@ Lots of changes in the new branch, more to come.
 
 ## Basic Usage
 
- * Install by cloning. Depends on leiningen 2.0 >= preview10
+ * Install by cloning. Depends on leiningen version >= 2.0preview10
 
  * `cd` into the dj directory and run `lein repl`
 
@@ -38,7 +38,7 @@ Lots of changes in the new branch, more to come.
 
  * dj.cljs: clojurescript utilities, see `cljs-repl`
 
- * dj.git: clone is useful. Not really a complete namespace
+ * dj.git: `clone` is useful. Not really a complete namespace
 
 ## Discussion
 
@@ -49,8 +49,8 @@ Lots of changes in the new branch, more to come.
    ~/bin/dj-repl
 
         #!/bin/sh
-	cd ~/dj/
-	lein repl
+        cd ~/dj/
+        lein repl
 
  * Profiles were found not necessary for native dependencies because of
    native-path handling of dj. However, it may be useful if you depend
