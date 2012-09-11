@@ -13,17 +13,44 @@ Lots of changes in the new branch, more to come.
 
 ## Basic Usage
 
- * Install by cloning. Depends on leiningen 2.0 > preview10
+ * Install by cloning. Depends on leiningen 2.0 >= preview10
 
  * `cd` into the dj directory and run `lein repl`
 
  * `(dj.dependencies/resolve-project "project-name")` to dynamically
    load a project.
 
+ * Note projects should be stored in dj/usr/src
+
+## Useful namespaces
+
+ * dj: core-like utility functions, check out `system-root` for
+   relative paths
+
+ * dj.io: file utils, see `file`, `poop`, and `eat`
+
+ * dj.classloader: can reset native paths in runtime
+   `reset-native-paths!`, grab resources as strings in the classpath
+   `resource-as-str`, and reload class files (betcha didn't know you
+   can do that) `reload-class-file`
+
+ * dj.dependencies: `resolve-project`
+
+ * dj.cljs: clojurescript utilities, see `cljs-repl`
+
+ * dj.git: clone is useful. Not really a complete namespace
+
 ## Discussion
 
- * Recommends creating a script that cd's into the dj's directory and
+ * I recommend creating a script that cd's into the dj's directory and
    runs lein repl, this allows you to run dj anywhere.
+
+   Something simple like:
+   ~/bin/dj-repl
+
+        #!/bin/sh
+	cd ~/dj/
+	lein repl
 
  * Profiles were found not necessary for native dependencies because of
    native-path handling of dj. However, it may be useful if you depend
