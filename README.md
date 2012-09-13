@@ -1,4 +1,4 @@
-# dj 2.0.0
+# dj 2.0alpha
 
 ## Motivation
 
@@ -17,10 +17,18 @@ Lots of changes in the new branch, more to come.
 
  * `cd` into the dj directory and run `lein repl`
 
- * `(dj.dependencies/resolve-project "project-name")` to dynamically
-   load a project.
+ * Define your projects (with the project.clj file) in dj/usr/src
 
- * Note projects should be stored in dj/usr/src
+ * `(dj.dependencies/resolve-project "project-name")` to dynamically
+   load a project. It will recursively resolve the project's
+   dependencies.
+
+ * If you want to depend on other projects add
+   `:dj/dependencies ["foo" "bar"]`
+   where `"foo"` and `"bar"` are projects in dj/usr/src.
+
+ * In addition, instead of project names, you can use git urls. Like
+   `"git://github.com/bmillare/dj.peg"`
 
 ## Useful namespaces
 
@@ -39,6 +47,11 @@ Lots of changes in the new branch, more to come.
  * dj.cljs: clojurescript utilities, see `cljs-repl`
 
  * dj.git: `clone` is useful. Not really a complete namespace
+
+## Version
+
+ * dj is listed as alpha software. It is highly experimental and
+   changes on a whim. Stability will come naturally in time.
 
 ## Discussion
 
