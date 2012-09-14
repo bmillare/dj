@@ -53,3 +53,6 @@
   (exists? [f]))
 
 (defmulti cp #(vector (type %1) (type %2)))
+
+(defmulti print-method (fn [x writer]
+			 (class x)))

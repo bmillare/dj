@@ -207,3 +207,28 @@ possible without slowing down ref"
 (defn copy-url-to-file [url ^java.io.File f]
   (org.apache.commons.io.FileUtils/copyURLToFile (java.net.URL. url)
 						 f))
+
+(defmethod print-method java.io.File [o ^java.io.Writer w]
+	   (.write w "#dj.io/file \"")
+	   (.write w (str o))
+	   (.write w "\""))
+
+(defmethod print-method :default [o ^java.io.Writer w]
+	   (clojure.core/print-method o w))
+
+(defn pr-str [obj]
+  (let [s (java.io.StringWriter.)]
+    (print-method obj s)
+    (str s)))
+
+(defonce reader-map
+  (ref {'dj.io/file (fn [arg]
+		      (java.io.File. arg))}))
+
+(defmacro defdata-reader [sym args & body]
+  `(dosync
+    (alter reader-map assoc '~sym (fn ~args ~@body))))
+
+(defn read-string [s]
+  (binding [*data-readers* @reader-map]
+    (clojure.core/read-string s)))
