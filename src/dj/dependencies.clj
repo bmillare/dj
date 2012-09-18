@@ -38,9 +38,10 @@
     entry))
 
 (defn resolve-path [path]
-  (if (dj.io/absolute-path? path)
-    (dj.io/file path)
-    (dj.io/file dj/system-root "usr/src" path)))
+  (let [f (dj.io/file path)]
+    (if (.isAbsolute f)
+      f
+      (dj.io/file dj/system-root "usr/src" path))))
 
 (defn resolve-project [relative-path]
   (let [project-dir (resolve-path relative-path)
