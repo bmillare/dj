@@ -32,5 +32,18 @@
     (.setMessage c (or message "default"))
     (.call c)))
 
+(defn lookup-with-local-config [hostname]
+  (let [host-data (.lookup (org.eclipse.jgit.transport.OpenSshConfig/get org.eclipse.jgit.util.FS/DETECTED)
+			   hostname)]
+    {:hostname (.getHostName host-data)
+     :identity-file (.getIdentityFile host-data)
+     :port (.getPort host-data)
+     :preferred-authentications (.getPreferredAuthentications host-data)
+     :strict-host-key-checking (.getStrictHostKeyChecking host-data)
+     :user (.getUser host-data)
+     :batch-mode? (.isBatchMode host-data)}))
+
 (defn foo [file]
-  (.getRepository (org.eclipse.jgit.api.Git/open file)))
+  (let [g (org.eclipse.jgit.api.Git/open file)
+	r (.getRepository g)]
+    (.getString (.getConfig r))))
