@@ -12,16 +12,16 @@
   ([^java.lang.String uri]
      (clone uri (dj.io/file dj/system-root "usr/src"))))
 
+;; note for whatever reason, pull'ing and push'ing must be with
+;; reference to a file that points to the .git folder, not the parent.
+
+;; this is strange since commit seams to work for the parent folder.
 (defn pull [file]
-  (-> (.pull (org.eclipse.jgit.api.Git.
-	      (org.eclipse.jgit.storage.file.FileRepository.
-	       file)))
+  (-> (.pull (org.eclipse.jgit.api.Git/open file))
     (.call)))
 
 (defn push [file]
-  (-> (.push (org.eclipse.jgit.api.Git.
-	      (org.eclipse.jgit.storage.file.FileRepository.
-	       file)))
+  (-> (.push (org.eclipse.jgit.api.Git/open file))
       (.call)))
 
 (defn commit [file options]
@@ -31,3 +31,6 @@
       (.setAll c true))
     (.setMessage c (or message "default"))
     (.call c)))
+
+(defn foo [file]
+  (.getRepository (org.eclipse.jgit.api.Git/open file)))
