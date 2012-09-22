@@ -43,7 +43,25 @@
      :user (.getUser host-data)
      :batch-mode? (.isBatchMode host-data)}))
 
-(defn foo [file]
-  (let [g (org.eclipse.jgit.api.Git/open file)
-	r (.getRepository g)]
-    (.getString (.getConfig r))))
+;; (org.eclipse.jgit.transport.URIish.)
+;; we can cache this and query the user, use seesaw
+(defn passphrase-cp [items]
+  (proxy [org.eclipse.jgit.transport.CredentialsProvider] []
+    (get [uri items]
+	 (let [items (seq items)]
+	   ;; must set CredentialItem item accordingly
+	   (doseq [i items]
+	     (when (re-find #"Passphrase"
+			    (.getPromptText i))
+	       (.setValue i (:passphrase items)))))
+	 true)
+    (isInteractive []
+		   true)))
+
+(defmacro with-credential-provider [p & body]
+  `(let [current-provider# (org.eclipse.jgit.transport.CredentialsProvider/getDefault)]
+     (try
+       (org.eclipse.jgit.transport.CredentialsProvider/setDefault ~p)
+       ~@body
+       (finally
+	(org.eclipse.jgit.transport.CredentialsProvider/setDefault current-provider#)))))
