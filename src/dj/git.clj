@@ -1,6 +1,45 @@
 (ns dj.git
   (:require [dj]
-	    [dj.io]))
+	    [dj.io]
+	    [seesaw.core :as sc]))
+
+(defn request-passphrase
+  "Creates input dialog and returns password"
+  [msg]
+  (let [pw (sc/password :echo-char \*)
+	pw-promise (promise)]
+    (javax.swing.JOptionPane/showMessageDialog nil (object-array [msg pw]))
+    (sc/with-password* pw (fn [p] (deliver pw-promise (apply str p))))
+    @pw-promise))
+
+(def m-set-passphrase
+     (memoize (fn [item prompt-text]
+		(when (re-find #"Passphrase"
+			       prompt-text)
+		  (.setValue item (request-passphrase prompt-text))))))
+
+(defn passphrase-cp []
+  (proxy [org.eclipse.jgit.transport.CredentialsProvider] []
+    (get [uri items]
+	 (let [items (seq items)]
+	   (doseq [i items]
+	     (m-set-passphrase i
+			       (.getPromptText i))))
+	 true)
+    (isInteractive []
+		   true)))
+
+(defmacro with-credential-provider [p & body]
+  `(let [current-provider# (org.eclipse.jgit.transport.CredentialsProvider/getDefault)]
+     (try
+       (org.eclipse.jgit.transport.CredentialsProvider/setDefault ~p)
+       ~@body
+       (finally
+	(org.eclipse.jgit.transport.CredentialsProvider/setDefault current-provider#)))))
+
+(defn with-dcp [f & args]
+  (with-credential-provider (passphrase-cp)
+    (apply f args)))
 
 (defn clone
   ([^java.lang.String uri ^java.io.File dest]
@@ -42,26 +81,3 @@
      :strict-host-key-checking (.getStrictHostKeyChecking host-data)
      :user (.getUser host-data)
      :batch-mode? (.isBatchMode host-data)}))
-
-;; (org.eclipse.jgit.transport.URIish.)
-;; we can cache this and query the user, use seesaw
-(defn passphrase-cp [items]
-  (proxy [org.eclipse.jgit.transport.CredentialsProvider] []
-    (get [uri items]
-	 (let [items (seq items)]
-	   ;; must set CredentialItem item accordingly
-	   (doseq [i items]
-	     (when (re-find #"Passphrase"
-			    (.getPromptText i))
-	       (.setValue i (:passphrase items)))))
-	 true)
-    (isInteractive []
-		   true)))
-
-(defmacro with-credential-provider [p & body]
-  `(let [current-provider# (org.eclipse.jgit.transport.CredentialsProvider/getDefault)]
-     (try
-       (org.eclipse.jgit.transport.CredentialsProvider/setDefault ~p)
-       ~@body
-       (finally
-	(org.eclipse.jgit.transport.CredentialsProvider/setDefault current-provider#)))))
