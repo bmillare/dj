@@ -28,6 +28,13 @@
   (set-value [this v]
 	     (.setValue this (char-array v))))
 
+(extend-type org.eclipse.jgit.transport.CredentialItem$YesNoType
+  CPSetter
+  (set-value [this v]
+	     (.setValue this (-> (re-find #"(?i)no" (str v))
+				 not
+				 boolean))))
+
 (defn passphrase-cp []
   (proxy [org.eclipse.jgit.transport.CredentialsProvider] []
     (get [uri items]
