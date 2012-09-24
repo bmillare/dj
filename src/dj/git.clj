@@ -12,19 +12,30 @@
     (sc/with-password* pw (fn [p] (deliver pw-promise (apply str p))))
     @pw-promise))
 
-(def m-set-passphrase
-     (memoize (fn [item prompt-text]
-		(when (re-find #"Passphrase"
-			       prompt-text)
-		  (.setValue item (request-passphrase prompt-text))))))
+(def m-request-passphrase
+     (memoize request-passphrase))
+
+(defprotocol CPSetter
+  (set-value [this v]))
+
+(extend-type org.eclipse.jgit.transport.CredentialItem
+  CPSetter
+  (set-value [this v]
+	     (.setValue this (str v))))
+
+(extend-type org.eclipse.jgit.transport.CredentialItem$CharArrayType
+  CPSetter
+  (set-value [this v]
+	     (.setValue this (char-array v))))
 
 (defn passphrase-cp []
   (proxy [org.eclipse.jgit.transport.CredentialsProvider] []
     (get [uri items]
 	 (let [items (seq items)]
 	   (doseq [i items]
-	     (m-set-passphrase i
-			       (.getPromptText i))))
+	     (set-value i
+			(m-request-passphrase
+			 (.getPromptText i)))))
 	 true)
     (isInteractive []
 		   true)))
