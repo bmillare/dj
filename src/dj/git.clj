@@ -66,21 +66,32 @@
 ;; reference to a file that points to the .git folder, not the parent.
 
 ;; this is strange since commit seams to work for the parent folder.
-(defn pull [file]
+(defn pull* [file]
   (-> (.pull (org.eclipse.jgit.api.Git/open file))
-    (.call)))
+      (.call)))
 
-(defn push [file]
+(defn pull [file]
+  (with-dcp pull* file))
+
+(defn push* [file]
   (-> (.push (org.eclipse.jgit.api.Git/open file))
       (.call)))
 
-(defn commit [file options]
+(defn push [file]
+  (with-dcp push* file))
+
+(defn commit*
+  "options must be a map with probably all set to true and a message"
+  [file options]
   (let [{:keys [all amend author message]} options
 	c (.commit (org.eclipse.jgit.api.Git/open file))]
     (when all
       (.setAll c true))
     (.setMessage c (or message "default"))
     (.call c)))
+
+(defn commit [file options]
+  (with-dcp commit* file options))
 
 (defn lookup-with-local-config [hostname]
   (let [host-data (.lookup (org.eclipse.jgit.transport.OpenSshConfig/get org.eclipse.jgit.util.FS/DETECTED)
