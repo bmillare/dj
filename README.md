@@ -53,7 +53,16 @@ Lots of changes in the new branch, more to come.
  * dj is listed as alpha software. It is highly experimental and
    changes on a whim. Stability will come naturally in time.
 
-## Discussion
+## Installation Notes
+
+ * You'll need to install leiningen first. This means download the
+   `lein` script and run `lein self-install`. Windows users will also
+   have to download wget (as explained on leinigen's page). It is
+   optional to install git but highly recommended. Windows users can
+   use github supported app. Next you'll need to install dj by cloning
+   it. If you didn't install git, you can download and extract an old
+   dj snapshot in the downloads section, and use `(dj.git/pull
+   dj/system-root)` to update to the most recent version.
 
  * I recommend creating a script that cd's into the dj's directory and
    runs lein repl, this allows you to run dj anywhere.
@@ -64,6 +73,8 @@ Lots of changes in the new branch, more to come.
         #!/bin/sh
         cd ~/dj/
         lein repl
+
+## Discussion
 
  * Profiles were found not necessary for native dependencies because of
    native-path handling of dj. However, it may be useful if you depend

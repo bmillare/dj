@@ -81,7 +81,8 @@
   (with-dcp push* file))
 
 (defn commit*
-  "options must be a map with probably all set to true and a message"
+  "options must be a map with probably 'all' set to true and 'message'
+  set to something"
   [file options]
   (let [{:keys [all amend author message]} options
 	c (.commit (org.eclipse.jgit.api.Git/open file))]
@@ -103,3 +104,14 @@
      :strict-host-key-checking (.getStrictHostKeyChecking host-data)
      :user (.getUser host-data)
      :batch-mode? (.isBatchMode host-data)}))
+
+(def ssh-key-instructions
+"You'll need to generate keys. Windows users can use puttygen. *nix
+users use ssh-keygen. To use jgit you'll probably need to create
+a ~/.ssh/config file which contains
+
+Host *
+    StrictHostKeyChecking no
+
+For windows users this usually in C:\\Users\\hara\\.ssh
+")
