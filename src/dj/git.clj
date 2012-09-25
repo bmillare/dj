@@ -47,7 +47,6 @@
 (defn passphrase-cp []
   (proxy [org.eclipse.jgit.transport.CredentialsProvider] []
     (get [uri items]
-	 (println "wtasdfasdf;laksdfj")
 	 (let [items (seq items)]
 	   (doseq [i items]
 	     (set-value i
