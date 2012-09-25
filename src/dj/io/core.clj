@@ -232,3 +232,51 @@ possible without slowing down ref"
 (defn read-string [s]
   (binding [*data-readers* @reader-map]
     (clojure.core/read-string s)))
+
+(defmacro with-temp-file [filesym options & body]
+  `(let [options# (merge {:prefix "djtmp"
+			  :suffix "tmp"
+			  :read-fn slurp}
+			 ~options)
+	 ~filesym (java.io.File/createTempFile (:prefix options#)
+					       (:suffix options#))
+	 ret# (promise)]
+     (try
+       ~@body
+       (finally
+	(deliver ret#
+		 ((:read-fn options#) ~filesym))
+	(rm ~filesym)))
+     @ret#))
+
+(defn cstring [s]
+  (let [cstring-length (inc (count s))
+	a (byte-array cstring-length)]
+    (System/arraycopy (.getBytes s)
+		      0
+		      a
+		      0
+		      (count s))
+    (aset-byte a
+	       (count s)
+	       0)
+    a))
+
+(defn eat-binary-file
+  "not for large files"
+  [^java.io.File file]
+  (io! (with-open [reader (clojure.java.io/input-stream file)]
+         (let [buffer (byte-array (.length file))]
+           (.read reader buffer)
+           buffer))))
+
+(defn c-eat-binary-file
+  "not for large files, appends null character"
+  [^java.io.File file]
+  (io! (with-open [reader (clojure.java.io/input-stream file)]
+         (let [buffer (byte-array (inc (.length file)))]
+           (.read reader buffer)
+	   (aset-byte buffer
+		      (.length file)
+		      0)
+           buffer))))
