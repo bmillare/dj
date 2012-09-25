@@ -26,7 +26,7 @@
 			   (java.util.Arrays/fill password \0))
 	pw (javax.swing.JPasswordField. (int 20))
 	focus (fn []
-		(javax.swing.SwingUtilities/invokeLater #(dj.repl/log (.requestFocusInWindow pw))))
+		(javax.swing.SwingUtilities/invokeLater #(.requestFocusInWindow pw)))
 	panel (doto (javax.swing.Box. javax.swing.BoxLayout/Y_AXIS)
 		(.add (doto (javax.swing.JLabel. msg)
 			add-border
