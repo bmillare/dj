@@ -3,6 +3,15 @@
 	    [dj.io]
 	    [seesaw.core :as sc]))
 
+(defrecord git-logger [log]
+  com.jcraft.jsch.Logger
+  (isEnabled [this level]
+	     true)
+  (log [this level msg]
+       (swap! log conj msg)))
+
+(def log (->git-logger (atom [])))
+
 (defn request-passphrase
   "Creates input dialog and returns password"
   [msg]
@@ -38,6 +47,7 @@
 (defn passphrase-cp []
   (proxy [org.eclipse.jgit.transport.CredentialsProvider] []
     (get [uri items]
+	 (println "wtasdfasdf;laksdfj")
 	 (let [items (seq items)]
 	   (doseq [i items]
 	     (set-value i
@@ -59,7 +69,10 @@
   (with-credential-provider (passphrase-cp)
     (apply f args)))
 
-(defn clone
+(defn set-logger [logger]
+  (com.jcraft.jsch.JSch/setLogger logger))
+
+(defn clone*
   ([^java.lang.String uri ^java.io.File dest]
      (let [urish (org.eclipse.jgit.transport.URIish. uri)]
        (doto (org.eclipse.jgit.api.CloneCommand.)
@@ -67,12 +80,14 @@
 	 (.setDirectory (dj.io/file dest (.getHumanishName urish)))
 	 (.call))))
   ([^java.lang.String uri]
-     (clone uri (dj.io/file dj/system-root "usr/src"))))
+     (clone* uri (dj.io/file dj/system-root "usr/src"))))
 
-;; note for whatever reason, pull'ing and push'ing must be with
-;; reference to a file that points to the .git folder, not the parent.
+(defn clone
+  ([uri dest]
+     (with-dcp clone* uri dest))
+  ([uri]
+     (with-dcp clone* uri)))
 
-;; this is strange since commit seams to work for the parent folder.
 (defn pull* [file]
   (-> (.pull (org.eclipse.jgit.api.Git/open file))
       (.call)))
@@ -101,6 +116,10 @@
 (defn commit [file options]
   (with-dcp commit* file options))
 
+(defn diff [file]
+  (-> (.diff (org.eclipse.jgit.api.Git/open file))
+      (.call)))
+
 (defn lookup-with-local-config [hostname]
   (let [host-data (.lookup (org.eclipse.jgit.transport.OpenSshConfig/get org.eclipse.jgit.util.FS/DETECTED)
 			   hostname)]
@@ -121,4 +140,9 @@ Host *
     StrictHostKeyChecking no
 
 For windows users this usually in C:\\Users\\hara\\.ssh
+
+You may need to install full unrestricted crytography via
+http://www.oracle.com/technetwork/java/javase/downloads/jce-7-download-432124.html
+
+You may want to use github generated key
 ")
