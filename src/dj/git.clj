@@ -119,6 +119,11 @@
   (-> (.diff (org.eclipse.jgit.api.Git/open file))
       (.call)))
 
+(defn add [file filepattern]
+  (-> (.add (org.eclipse.jgit.api.Git/open file))
+      (.addFilepattern filepattern)
+      (.call)))
+
 (defn lookup-with-local-config [hostname]
   (let [host-data (.lookup (org.eclipse.jgit.transport.OpenSshConfig/get org.eclipse.jgit.util.FS/DETECTED)
 			   hostname)]
