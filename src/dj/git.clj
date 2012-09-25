@@ -1,7 +1,6 @@
 (ns dj.git
   (:require [dj]
-	    [dj.io]
-	    [seesaw.core :as sc]))
+	    [dj.io]))
 
 (defrecord git-logger [log]
   com.jcraft.jsch.Logger
@@ -15,11 +14,59 @@
 (defn request-passphrase
   "Creates input dialog and returns password"
   [msg]
-  (let [pw (sc/password :echo-char \*)
-	pw-promise (promise)]
-    (javax.swing.JOptionPane/showMessageDialog nil (object-array [msg pw]))
-    (sc/with-password* pw (fn [p] (deliver pw-promise (apply str p))))
-    @pw-promise))
+  (let [add-border (fn [component]
+		     (doto component
+		       (.setBorder
+			(javax.swing.BorderFactory/createLineBorder (java.awt.Color. 0 0 0 0)
+								    10))))
+	ret-pw (promise)
+	deliver-password (fn [password]
+			   (deliver ret-pw
+				    (apply str password))
+			   (java.util.Arrays/fill password \0))
+	pw (javax.swing.JPasswordField. (int 20))
+	focus (fn []
+		(javax.swing.SwingUtilities/invokeLater #(dj.repl/log (.requestFocusInWindow pw))))
+	panel (doto (javax.swing.Box. javax.swing.BoxLayout/Y_AXIS)
+		(.add (doto (javax.swing.JLabel. msg)
+			add-border
+			(.setAlignmentX java.awt.Component/CENTER_ALIGNMENT)))
+		(.add (javax.swing.Box/createVerticalGlue))
+		(.add pw))
+	frame (doto (javax.swing.JFrame. "Input Required")
+		(.setLocationRelativeTo nil)
+		(.add (add-border panel))
+		(.addWindowListener (reify java.awt.event.WindowListener
+					   (windowActivated [this event]
+							    (focus))
+					   (windowClosed [this event])
+					   (windowDeactivated [this event])
+					   (windowDeiconified [this event]
+							      (focus))
+					   (windowIconified [this event])
+					   (windowOpened [this event]
+							 (focus))
+					   (windowClosing [this event]
+							  (deliver-password (.getPassword pw))))))]
+    (doto pw
+      (.setRequestFocusEnabled true)
+      (.setFocusable true)
+      (.setEchoChar \*)
+      (.setAlignmentX java.awt.Component/CENTER_ALIGNMENT)
+      (.addKeyListener (reify java.awt.event.KeyListener
+			      (keyPressed [this ke]
+					  (when (= (.getKeyCode ke)
+						   java.awt.event.KeyEvent/VK_ENTER)
+					    (deliver-password (.getPassword pw))
+					    (.dispatchEvent frame (java.awt.event.WindowEvent. frame
+											       java.awt.event.WindowEvent/WINDOW_CLOSING))))
+			      (keyReleased [this ke])
+			      (keyTyped [this ke]))))
+    (javax.swing.SwingUtilities/invokeLater (fn []
+					      (doto frame
+						(.pack)
+						(.show))))
+    @ret-pw))
 
 (def m-request-passphrase
      (memoize request-passphrase))
@@ -124,7 +171,15 @@
       (.addFilepattern filepattern)
       (.call)))
 
-(defn lookup-with-local-config [hostname]
+(defn proj
+  "Returns project relative file for convenience with api (relative to
+  dj/system-root \"usr/src\""
+  [relative-project-path]
+  (dj.io/file dj/system-root "usr/src" relative-project-path))
+
+(defn lookup-with-local-config
+  "useful debugging information"
+  [hostname]
   (let [host-data (.lookup (org.eclipse.jgit.transport.OpenSshConfig/get org.eclipse.jgit.util.FS/DETECTED)
 			   hostname)]
     {:hostname (.getHostName host-data)
@@ -148,5 +203,6 @@ For windows users this usually in C:\\Users\\hara\\.ssh
 You may need to install full unrestricted crytography via
 http://www.oracle.com/technetwork/java/javase/downloads/jce-7-download-432124.html
 
-You may want to use github generated key
+You may want to use github generated key, they appear to be more
+reliable on windows systems
 ")

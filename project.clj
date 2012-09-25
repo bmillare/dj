@@ -7,6 +7,7 @@
 		 [org.apache.directory.studio/org.apache.commons.io "2.1"]
 		 [seesaw "1.4.2"]]
   :injections [(require '[cemerick.piggieback]
+			'[dj.repl]
 			'[dj.dependencies]
 			'[dj.cljs])]
   :repl-options {:nrepl-middleware [cemerick.piggieback/wrap-cljs-repl]})
