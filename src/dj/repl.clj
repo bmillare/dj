@@ -7,30 +7,40 @@
   (doseq [s (keys (ns-interns ns))]
     (ns-unmap ns s)))
 
-(defmacro log*
-  [code store log-fn]
+(defn logger [store]
+  (fn [entity attribute value]
+    (swap! store
+	   conj
+	   {:entity entity
+	    :attribute attribute
+	    :value value
+	    :time (java.util.Date.)})))
+
+(def store (atom []))
+
+(def log*
+     "default logger. uses dj.repl/store as the store"
+     (logger store))
+
+(defn log-code-macro* [code logger-sym]
   `(let [c# ~code]
-     (swap! ~store
-	    ~log-fn
-	    {'~code c#})
+     (~logger-sym '~code
+		  :returned
+		  c#)
      c#))
 
-(defmacro log
-  "for debugging, output code and code->val to stdout and returns val. Also supports options
-:store (atom and arbitrary data structure)
-:log-fn (will swap! value in from log-fn)
-"
-  ([code]
-     `(let [c# ~code]
-	(prn '~code)
-	(clojure.pprint/pprint c#)
-	c#))
-  ([code options]
-     `(let [options# ~options]
-	(log* ~code
-	      (:store options#)
-	      (or (:log-fn options#)
-		  conj)))))
+(defmacro def-log-code-macro
+  "creates a code logging macro. Takes a name and a symbol of the
+  logger fn (no quote necessary) that must accept an entity,
+  attribute, and value"
+  [logger-name logger-sym]
+  `(let [logger-sym# '~logger-sym]
+     (defmacro ~logger-name
+       ~(str "generated loging macro for the " logger-sym " logger")
+       [~'code]
+       (log-code-macro* ~'code logger-sym#))))
+
+(def-log-code-macro log dj.repl/log*)
 
 (defmacro log->thread [x form chain-sym]
   `(let [out# (-> ~x
