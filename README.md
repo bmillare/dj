@@ -11,13 +11,43 @@ distribution.
 
 Lots of changes in the new branch, more to come.
 
+## Installation Notes
+
+1. Install [leiningen](https://github.com/technomancy/leiningen) by
+downloading and running the script
+
+Note: This means download the `lein` script and run `lein
+self-install`. Windows users will also have to download wget (as
+explained on leinigen's page). It is optional to install git but
+highly recommended. Windows users can use github supported app.
+
+2. Install dj by cloning it in git.
+
+If you didn't install git, you can download and extract an old dj
+snapshot in the downloads section, and use `(dj.git/pull
+dj/system-root)` to update to the most recent version.
+
+3. (Recommended) Create a launching script that cd's into the dj's
+   directory and runs lein repl, this allows you to run dj anywhere.
+
+   Something simple like:
+   ~/bin/dj-repl
+
+        #!/bin/sh
+        cd ~/dj/
+        lein repl
+
+For a detailed walkthrough for new clojure users, see
+[walkthrough](https://github.com/bmillare/dj/blob/master/WALKTHROUGH.md)
+
 ## Basic Usage
 
  * Install by cloning. Depends on leiningen version >= 2.0preview10
 
  * `cd` into the dj directory and run `lein repl`
 
- * Define your projects (with the project.clj file) in dj/usr/src
+ * Define your projects (with the project.clj file) in
+   `dj/usr/src`. So something like `dj/usr/src/com.foo`
 
  * `(dj.dependencies/resolve-project "project-name")` to dynamically
    load a project. It will recursively resolve the project's
@@ -52,27 +82,6 @@ Lots of changes in the new branch, more to come.
 
  * dj is listed as alpha software. It is highly experimental and
    changes on a whim. Stability will come naturally in time.
-
-## Installation Notes
-
- * You'll need to install leiningen first. This means download the
-   `lein` script and run `lein self-install`. Windows users will also
-   have to download wget (as explained on leinigen's page). It is
-   optional to install git but highly recommended. Windows users can
-   use github supported app. Next you'll need to install dj by cloning
-   it. If you didn't install git, you can download and extract an old
-   dj snapshot in the downloads section, and use `(dj.git/pull
-   dj/system-root)` to update to the most recent version.
-
- * I recommend creating a script that cd's into the dj's directory and
-   runs lein repl, this allows you to run dj anywhere.
-
-   Something simple like:
-   ~/bin/dj-repl
-
-        #!/bin/sh
-        cd ~/dj/
-        lein repl
 
 ## Discussion
 
