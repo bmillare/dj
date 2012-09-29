@@ -13,7 +13,7 @@ Lots of changes in the new branch, more to come.
 
 ## Installation Notes
 
-1. Install [leiningen](https://github.com/technomancy/leiningen) by
+1: Install [leiningen](https://github.com/technomancy/leiningen) by
 downloading and running the script
 
 Note: This means download the `lein` script and run `lein
@@ -21,13 +21,13 @@ self-install`. Windows users will also have to download wget (as
 explained on leinigen's page). It is optional to install git but
 highly recommended. Windows users can use github supported app.
 
-2. Install dj by cloning it in git.
+2: Install dj by cloning it in git.
 
 If you didn't install git, you can download and extract an old dj
 snapshot in the downloads section, and use `(dj.git/pull
 dj/system-root)` to update to the most recent version.
 
-3. (Recommended) Create a launching script that cd's into the dj's
+3: (Recommended) Create a launching script that cd's into the dj's
    directory and runs lein repl, this allows you to run dj anywhere.
 
    Something simple like:
@@ -37,7 +37,7 @@ dj/system-root)` to update to the most recent version.
         cd ~/dj/
         lein repl
 
-For a detailed walkthrough for new clojure users, see
+*NOTE:* For a detailed walkthrough for new clojure users, see
 [walkthrough](https://github.com/bmillare/dj/blob/master/WALKTHROUGH.md)
 
 ## Basic Usage
