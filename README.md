@@ -37,8 +37,8 @@ dj/system-root)` to update to the most recent version.
         cd ~/dj/
         lein repl
 
-*NOTE:* For a detailed walkthrough for new clojure users, see
-[walkthrough](https://github.com/bmillare/dj/blob/master/WALKTHROUGH.md)
+**NOTE:** For a detailed walkthrough for new clojure users, see
+[walkthrough](https://github.com/bmillare/dj/wiki/Walkthrough)
 
 ## Basic Usage
 
