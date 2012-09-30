@@ -1,8 +1,11 @@
 (ns dj.dependencies
   (:require [leiningen.core.project :as project]
+            [cemerick.pomegranate :as pom]
 	    [dj]
 	    [dj.io]
 	    [dj.git]))
+
+(dj/import-fn #'pom/add-dependencies)
 
 (defn eval-project-form
   "like leiningen.core.project/read but from a clojure form instead of a file"
