@@ -21,7 +21,7 @@ If you didn't install git, you can download and extract an old dj snapshot in th
 3: (Recommended) Create a launching script that cd's into the dj's directory and runs lein repl, this allows you to run dj anywhere.
 
    Something simple like:
-   ~/bin/dj-repl
+   `~/bin/dj-repl`
 
 ```sh
         #!/bin/sh
@@ -33,7 +33,7 @@ If you didn't install git, you can download and extract an old dj snapshot in th
 
 ## Basic Usage
 
- * Install by cloning. Depends on leiningen version >= 2.0preview10
+ * Install by cloning. Depends on leiningen version `>=2.0preview10`
 
  * `cd` into the dj directory and run `lein repl`
 
@@ -41,7 +41,7 @@ If you didn't install git, you can download and extract an old dj snapshot in th
 
  * `(dj.dependencies/resolve-project "project-name")` to dynamically load a project. It will recursively resolve the project's dependencies.
 
- * If you want to depend on other projects add `:dj/dependencies ["foo" "bar"]` where `"foo"` and `"bar"` are projects in dj/usr/src.
+ * If you want to depend on other projects add `:dj/dependencies ["foo" "bar"]` where `"foo"` and `"bar"` are projects in `dj/usr/src`.
 
  * In addition, instead of project names, you can use git urls. Like `"git://github.com/bmillare/dj.peg"`
 
