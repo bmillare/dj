@@ -24,9 +24,9 @@ If you didn't install git, you can download and extract an old dj snapshot in th
    `~/bin/dj-repl`
 
 ```sh
-        #!/bin/sh
-        cd ~/dj/
-        lein repl
+#!/bin/sh
+cd ~/dj/
+lein repl
 ```
 
 **NOTE:** For a detailed walkthrough for new clojure users, see [walkthrough](https://github.com/bmillare/dj/wiki/Walkthrough)
