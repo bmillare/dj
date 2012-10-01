@@ -51,6 +51,39 @@
 	  [(first s) (first s)]
 	  s))
 
+(defmacro for-hashmap
+  "args order predetermined for now. Like a seq comprehension
+clojure.core/for but for hashmaps.
+
+Example usage:
+
+\\(for-hashmap [entry (range 30)
+              :let [x (inc entry)]
+              :group (odd? x)]
+   (str x))
+"
+  [seq-exprs result-expr]
+  (let [[entry coll
+         letk let-expr
+         group-byk group-by-expr] seq-exprs]
+    (when-not (= letk :let)
+      (throw (Exception. ":let form not in correct place")))
+    (when-not (= group-byk :group-by)
+      (throw (Exception. ":group-by form not in correct place")))
+
+    `(persistent!
+      (reduce (fn [ret# ~entry]
+                (let ~let-expr
+                  (let [k# ~group-by-expr]
+                    (assoc! ret#
+                            k#
+                            (conj (get ret#
+                                       k#
+                                       [])
+                                  ~result-expr)))))
+              (transient {})
+              ~coll))))
+
 (defn update-all-in
   "returns map of application of fn f to all values in map m"
   [m f]
