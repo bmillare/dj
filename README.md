@@ -31,6 +31,8 @@ lein repl
 
 **NOTE:** For a detailed walkthrough for new clojure users, see [walkthrough](https://github.com/bmillare/dj/wiki/Walkthrough)
 
+Also, do **check out** the [wiki](https://github.com/bmillare/dj/wiki) for more information.
+
 ## Basic Usage
 
  * Install by cloning. Depends on leiningen version `>=2.0preview10`
