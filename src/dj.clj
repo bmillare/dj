@@ -57,11 +57,10 @@ clojure.core/for but for hashmaps.
 
 Example usage:
 
-\\(for-hashmap [entry (range 30)
-              :let [x (inc entry)]
-              :group (odd? x)]
-   (str x))
-"
+ (for-hashmap [entry (range 30)
+               :let [x (inc entry)]
+               :group (odd? x)]
+   (str x))"
   [seq-exprs result-expr]
   (let [[entry coll
          letk let-expr
@@ -70,7 +69,6 @@ Example usage:
       (throw (Exception. ":let form not in correct place")))
     (when-not (= group-byk :group-by)
       (throw (Exception. ":group-by form not in correct place")))
-
     `(persistent!
       (reduce (fn [ret# ~entry]
                 (let ~let-expr
