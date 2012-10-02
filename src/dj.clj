@@ -14,7 +14,7 @@
 
 (defn duplicates
   "given a sequable list, returns a vector of the duplicate entries in
-  the order that they were found"
+the order that they were found"
   [s]
   (loop [ns s
 	 test #{}
@@ -52,9 +52,9 @@
 	  s))
 
 (defmacro group-by-for
-  "Equivalent to applying 'for' to the results of 'group-by' but also
-provides let bindings, is more efficient since it executes in one pass
-and uses transients.
+  "Equivalent to applying 'for' to the results of 'group-by' but it
+also provides let bindings, is more efficient since it executes in one
+pass, and uses transients.
 
 :let is optional but must be after 'entry coll' binding
 :group-by (Required) must be an expression
@@ -118,9 +118,9 @@ Example usage:
 
 ;; Taken from Zachary Tellman's Potemkin
 (defmacro import-fn 
-  "Given a function in another namespace, defines a function by
-   the same name in the current namespace.  Argument lists and
-   doc-strings are preserved."
+  "Given a function in another namespace, defines a function by the
+same name in the current namespace.  Argument lists and doc-strings
+are preserved."
   [sym]
   (let [m (meta (eval sym))
         m (meta (intern (:ns m) (:name m)))
@@ -131,7 +131,7 @@ Example usage:
 
 (defn filter-fns
   "like filter, but takes a list of classifier functions instead of a
-  single classifier"
+single classifier"
   [fns rows]
   (filter #(every?
 	    (fn [f]
@@ -141,8 +141,8 @@ Example usage:
 
 (defn replace-map-unchecked
   "given an input string and a hash-map, returns a new string with all
-  keys in map found in input replaced with the value of the key. DOES
-  NOT java.util.regex.Matcher/quoteReplacement replace strings"
+keys in map found in input replaced with the value of the key. DOES
+NOT java.util.regex.Matcher/quoteReplacement replace strings"
   [s m]
   (clojure.string/replace s
 			  (re-pattern (apply str (interpose "|" (map #(java.util.regex.Pattern/quote %) (keys m)))))
@@ -150,7 +150,7 @@ Example usage:
 
 (defn replace-map
   "given an input string and a hash-map, returns a new string with all
-  keys in map found in input replaced with the value of the key"
+keys in map found in input replaced with the value of the key"
   [s m]
   (replace-map-unchecked s (reduce #(assoc %1 %2
 				      (java.util.regex.Matcher/quoteReplacement (%1 %2)))
@@ -169,7 +169,7 @@ Example usage:
 
 (defn substring
   "extends builtin subs to have negative indexes. A negative index
-  will implicitly mean "
+means to the left of the end of the string "
   ([s start end]
      (let [s-size (count s)
 	   s-idx (if (< start 0)
@@ -188,18 +188,19 @@ Example usage:
 
 (defn- bang-symbol?
   "Returns true, if sym is a symbol with name ending in a exclamation
-  mark (bang)."
+mark (bang)."
   [sym]
   (and (symbol? sym)
        (= (last (name sym)) \!)))
 
 (defmacro defmacro!
   "Defines a macro name with the given docstring, args, and body.
-  All args ending in an exclamation mark (!, bang) will be evaluated only once
-  in the expansion, even if they are unquoted at several places in body.  This
-  is especially important for args whose evaluation has side-effecs or who are
-  expensive to evaluate."
-  [name docstring args & body]
+All args ending in an exclamation mark (!, bang) will be evaluated
+only once in the expansion, even if they are unquoted at several
+places in body.  This is especially important for args whose
+evaluation has side-effecs or who are expensive to evaluate."
+  [name
+   docstring args & body]
   (let [bang-syms (filter bang-symbol? args)
         rep-map (apply hash-map
                        (mapcat (fn [s] [s `(quote ~(gensym))])
