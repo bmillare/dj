@@ -51,24 +51,37 @@
 	  [(first s) (first s)]
 	  s))
 
-(defmacro for-hashmap
-  "args order predetermined for now. Like a seq comprehension
-clojure.core/for but for hashmaps.
+(defmacro group-by-for
+  "Equivalent to applying 'for' to the results of 'group-by' but also
+provides let bindings, is more efficient since it executes in one pass
+and uses transients.
+
+:let is optional but must be after 'entry coll' binding
+:group-by (Required) must be an expression
 
 Example usage:
 
- (for-hashmap [entry (range 30)
-               :let [x (inc entry)]
-               :group (odd? x)]
-   (str x))"
-  [seq-exprs result-expr]
-  (let [[entry coll
-         letk let-expr
-         group-byk group-by-expr] seq-exprs]
+ (group-by-for [entry (range 5)
+                :let [x (inc entry)]
+                :group-by (odd? x)]
+   (str x))
+=> {true [\"1\" \"3\" \"5\"], false [\"2\" \"4\"]}
+"
+  [[entry coll & binding-exprs] result-expr]
+  (let [[letk let-expr
+         group-byk group-by-expr]
+        (case (count binding-exprs)
+          2 (into [:let []] binding-exprs)
+          4 binding-exprs
+          (throw
+           (Exception. "Illegal number of binding-exprs: "
+                       (count binding-exprs))))]
     (when-not (= letk :let)
-      (throw (Exception. ":let form not in correct place")))
+      (throw
+       (Exception. ":let form not in correct place")))
     (when-not (= group-byk :group-by)
-      (throw (Exception. ":group-by form not in correct place")))
+      (throw
+       (Exception. ":group-by form not in correct place")))
     `(persistent!
       (reduce (fn [ret# ~entry]
                 (let ~let-expr
@@ -82,14 +95,26 @@ Example usage:
               (transient {})
               ~coll))))
 
-(defn update-all-in
-  "returns map of application of fn f to all values in map m"
-  [m f]
-  (reduce #(update-in %1
-		      [%2]
-		      f)
-	  m
-	  (keys m)))
+(defn update-vals
+  "returns hashmap of application of f (with optional args) to all
+values in hashmap m
+
+Example usage:
+ (update-vals {:a 1 :b 2} + 3)
+=> {:a 4 :b 5}
+"
+  ([m f & args]
+     (persistent!
+      (reduce-kv (fn [ret k v]
+                   (assoc! ret k (apply f v args)))
+                 (transient {})
+                 m)))
+  ([m f]
+     (persistent!
+      (reduce-kv (fn [ret k v]
+                   (assoc! ret k (f v)))
+                 (transient {})
+                 m))))
 
 ;; Taken from Zachary Tellman's Potemkin
 (defmacro import-fn 
