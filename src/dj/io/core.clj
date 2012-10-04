@@ -137,6 +137,16 @@
 	       (ssh username server port
 		    (str "test -e " path))))))
 
+(defn file-channel-copy [^java.io.File source ^java.io.File dest]
+  (when-not (.exists dest)
+    (.createNewFile dest))
+  (with-open [s (.getChannel (java.io.FileInputStream. source))
+              d (.getChannel (java.io.FileOutputStream. dest))]
+    (.transferFrom d
+                   s
+                   0
+                   (.size s))))
+
 (defmethod cp [java.lang.String java.lang.String] [^java.lang.String in ^java.lang.String out]
 	   (sh-exception
 	    (sh/sh "cp" "-R" in out)))
