@@ -71,3 +71,6 @@
 			  (partition 2 1 @~chain-sym))))
        out#)))
 
+(defprotocol Lifecycle
+  (start [component])
+  (stop [component]))
