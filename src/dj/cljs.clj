@@ -31,8 +31,6 @@
       (sh/sh "script/bootstrap"
 	     :dir (dj.io/file cljs-dir "clojurescript")))))
 
-(def cljs-repl-envs (atom []))
-
 (defn cljs-repl
   "port: for repl/server
    working-dir: path/file to generated js
@@ -43,19 +41,32 @@
   [{:keys [port working-dir]}]
   (let [repl-env (doto (cljs.repl.browser/repl-env :port port :working-dir working-dir)
 		   cljs.repl/-setup)]
-    (swap! cljs-repl-envs conj repl-env)
+    ;; problem: currently no way to start/stop cljs-repls from afar
     (cemerick.piggieback/cljs-repl
      :repl-env repl-env)))
 
+(defmacro capture-out-err [& body]
+  `(let [o# (java.io.StringWriter.)
+         e# (java.io.StringWriter.)]
+     (binding [*out* o#
+               *err* e#]
+       (let [r# ~@body]
+         {:return r#
+          :out (str o#)
+          :error (str e#)}))))
+
 (defn cljs-eval
   ([repl-env env filename form]
-     (cljs.repl/evaluate-form repl-env env filename form))
+     (capture-out-err
+      (cljs.repl/evaluate-form repl-env env filename form)))
   ([repl-env form]
-     (cljs.repl/evaluate-form repl-env
-			      {:context :statement
-			       :locals {}
-			       :ns (cljs.analyzer/get-namespace 'cljs.user)}
-			      "<dj.cljs/cljs-eval>" form))
+     (capture-out-err
+      (cljs.repl/evaluate-form repl-env
+                               {:context :statement
+                                :locals {}
+                                :ns (cljs.analyzer/get-namespace 'cljs.user)}
+                               "<dj.cljs/cljs-eval>"
+                               form)))
   ([form]
      (let [repl-env (first @cljs-repl-envs)]
        (if repl-env
