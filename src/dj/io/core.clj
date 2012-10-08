@@ -303,7 +303,7 @@ possible without slowing down ref"
   (java.net.URI. (str "file:///"
                       (second (.split #"file:/+" (.toString (.toURI file)))))))
 
-(dj/compile-time-if (re-matches #"^1\.[0-6]" (System/getProperty "java.version"))
+(dj/compile-time-if (re-find #"^1\.[0-6]" (System/getProperty "java.version"))
                     (defn unzip [^java.io.File file ^java.io.File dest-dir]
                       (throw (Exception. "java7 required")))
                     (defn unzip [^java.io.File file ^java.io.File dest-dir]

@@ -66,9 +66,4 @@
                                 :locals {}
                                 :ns (cljs.analyzer/get-namespace 'cljs.user)}
                                "<dj.cljs/cljs-eval>"
-                               form)))
-  ([form]
-     (let [repl-env (first @cljs-repl-envs)]
-       (if repl-env
-	 (cljs-eval repl-env form)
-	 (throw (Exception. "No existing repl-env found in dj.cljs/cljs-repl-envs"))))))
+                               form))))
