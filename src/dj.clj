@@ -210,3 +210,11 @@ evaluation has side-effecs or who are expensive to evaluate."
        ~args
        `(let ~~(vec (mapcat (fn [[s t]] [t s]) rep-map))
           ~(clojure.walk/postwalk-replace ~rep-map ~@body)))))
+
+(defmacro compile-time-if
+  "Eval's check at compile time, if true, returns form1,
+else returns form2."
+  [check form1 form2]
+  (if (eval check)
+    form1
+    form2))
