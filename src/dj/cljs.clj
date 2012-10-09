@@ -2,6 +2,7 @@
   (:require [dj]
 	    [dj.git]
 	    [dj.io]
+            [dj.cljs]
 	    [dj.classloader]
 	    [clojure.java.shell :as sh]
 	    [cemerick.piggieback]
@@ -31,19 +32,37 @@
       (sh/sh "script/bootstrap"
 	     :dir (dj.io/file cljs-dir "clojurescript")))))
 
-(defn cljs-repl
+(defn ->cljs-browser-env
   "port: for repl/server
-   working-dir: path/file to generated js
-   To connect to server, run cljs in browser (clojure.browser.repl/connect \"http://localhost:<port>/repl\")
-   Make sure advanced optimizations is not activated. Simple works though.
+working-dir: path/file to generated js
 
-   Use load-file or load-namespace to do dynamic development"
-  [{:keys [port working-dir]}]
-  (let [repl-env (doto (cljs.repl.browser/repl-env :port port :working-dir working-dir)
-		   cljs.repl/-setup)]
-    ;; problem: currently no way to start/stop cljs-repls from afar
-    (cemerick.piggieback/cljs-repl
-     :repl-env repl-env)))
+Creates a browser connected evaluation environment object and returns
+it. This object wraps a repl-env
+
+To connect to server, run cljs in browser
+ (clojure.browser.repl/connect \"http://localhost:<port>/repl\")
+Make sure advanced optimizations is not activated. Simple works though.
+
+Use load-file or load-namespace to do dynamic development"
+  [opts]
+  (let [{:keys [port working-dir]} opts
+        repl-env (cljs.repl.browser/repl-env :port port :working-dir working-dir)]
+    (reify
+      dj.repl/Lifecycle
+      (start [this]
+        (doto repl-env
+          cljs.repl/-setup))
+      (stop [this]
+        (cljs.repl/-tear-down repl-env))
+      clojure.lang.IDeref
+      (deref [this]
+        repl-env))))
+
+(defn cljs-repl
+  "delegates to cemerick.piggieback"
+  [cljs-browser-env]
+  (cemerick.piggieback/cljs-repl
+   :repl-env @cljs-browser-env))
 
 (defmacro capture-out-err [& body]
   `(let [o# (java.io.StringWriter.)
@@ -56,14 +75,13 @@
           :error (str e#)}))))
 
 (defn cljs-eval
-  ([repl-env env filename form]
-     (capture-out-err
-      (cljs.repl/evaluate-form repl-env env filename form)))
-  ([repl-env form]
-     (capture-out-err
-      (cljs.repl/evaluate-form repl-env
-                               {:context :statement
-                                :locals {}
-                                :ns (cljs.analyzer/get-namespace 'cljs.user)}
-                               "<dj.cljs/cljs-eval>"
-                               form))))
+  "note this accepts the object returned from ->cljs-browser-env, not a repl-env"
+  [cljs-browser-env form]
+  (if (= form :cljs/quit)
+    {:return :cljs/quit
+     :out ""
+     :error ""}
+    (capture-out-err
+     (cemerick.piggieback/cljs-eval @cljs-browser-env
+                                    form
+                                    nil))))
