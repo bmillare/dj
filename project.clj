@@ -11,4 +11,5 @@
 			'[dj.dependencies]
 			'[dj.cljs]
                         '[clojure.tools.namespace.repl])]
-  :repl-options {:nrepl-middleware [cemerick.piggieback/wrap-cljs-repl]})
+  :repl-options {:nrepl-middleware [cemerick.piggieback/wrap-cljs-repl]}
+  :profiles {:database {:dependencies [[com.datomic/datomic-free "0.8.3546"]]}})
