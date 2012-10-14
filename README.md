@@ -4,7 +4,7 @@
 
 Dj takes the cacaphony of java, git, clojure, clojurescript and build tools and mixes it into something harmonious; a clojure distribution. Clojure is a dynamic language: shouldn't managing our projects be too? Dj supports the goal of never having to close your REPL.
 
-### A little bit more in depth
+### In depth
 
 Again, the purpose of dj is to provide a more **dynamic** and **integrated** development environment. As a start, dj accomplishes this by defining a simple directory structure for managing your clojure projects: `dj/usr/src`, and `dj/tmp`. Having a standard layout enables dj and the developer to have some common ground for installing and managing projects. As you create new projects or clone projects in `dj/usr/src` you can then load these projects into your already running REPL by using `dj.dependencies/resolve-project`: dj will automatically install projects via git if necessary, load dependencies, and set classpaths, as specified in the project's `project.clj` file.
 
