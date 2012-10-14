@@ -2,11 +2,17 @@
 
 ## Motivation
 
-"dj takes the cacaphony of java, git, clojure, clojurescript and build tools and mixes it into something harmonious."
+Dj takes the cacaphony of java, git, clojure, clojurescript and build tools and mixes it into something harmonious akin to a clojure distribution. Clojure is a dynamic language: shouldn't managing our projects be too? Dj supports the goal of never having to close your REPL.
 
-In a nutshell, dj is an attempt to make a clojure distribution. To be more accessible, dj now uses leiningen as a base for creating a distribution.
+### A little bit more in depth
 
-Lots of changes in the new branch, more to come.
+Again, the purpose of dj is to provide a more **dynamic** and **integrated** development environment. As a start, dj accomplishes this by defining a simple directory structure for managing your clojure projects: `dj/usr/src`, and `dj/tmp`. Having a standard layout enables dj and the developer to have some common ground for installing and managing your projects. As you create new projects or clone projects in `dj/usr/src` you can then load these projects into your already running REPL by using `dj.dependencies/resolve-project`: dj will automatically install projects via git if necessary, load dependencies, and set classpaths as specified in the project's `project.clj` file.
+
+If during development you want your projects to depend on each other and have dj recursively load the projects, you can specify source dependencies with the `:dj/dependencies` key in the project's `project.clj` file. Under the hood, dj implements its own `project.clj` parser and delegates to leiningen as necessary. (Note: In the future, this may better implemented as a leiningen plugin).
+
+Dj also provides convenience utilities for clojurescript, and datomic. For clojurescript, dj makes it easy to depend on the development version. There are also utilities for starting and stopping a browser environment for the browser connected cljs REPL. For datomic, there is a utility to install datomic into the local maven repository from the zip file. (Under the hood, `cemerick.pomegranate.aether/install` is being used).
+
+Dj uses jgit under the hood. This is what dj uses to install outside source projects. Also, this means, dj can update itself.
 
 ## Installation Notes
 
@@ -59,7 +65,7 @@ Also, do **check out** the [wiki](https://github.com/bmillare/dj/wiki) for more 
 
  * dj.cljs: clojurescript utilities, see `cljs-repl`
 
- * dj.git: `clone` is useful. Not really a complete namespace
+ * dj.git: basic operations are supported, not a robust replacement to cgit, but useful none the less.
 
 ## Version
 
