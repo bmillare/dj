@@ -85,3 +85,9 @@ Use load-file or load-namespace to do dynamic development"
      (cemerick.piggieback/cljs-eval @cljs-browser-env
                                     form
                                     nil))))
+
+(defn load-file [cljs-browser-env f]
+  (cljs.repl/load-file @cljs-browser-env f))
+
+(defn load-namespace [cljs-browser-env n]
+  (cljs.repl/load-namespace @cljs-browser-env n))
