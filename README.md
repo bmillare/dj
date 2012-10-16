@@ -47,6 +47,8 @@ Also, do **check out** the [wiki](https://github.com/bmillare/dj/wiki) for more 
 
  * Define your projects (with the project.clj file) in `dj/usr/src`. So something like `dj/usr/src/com.foo`
 
+ * You can use leiningen to create a new project. `lein new fooproject --to-dir usr/src/fooproject`
+
  * `(dj.dependencies/resolve-project "project-name")` to dynamically load a project. It will recursively resolve the project's dependencies.
 
  * If you want to depend on other projects add `:dj/dependencies ["foo" "bar"]` where `"foo"` and `"bar"` are projects in `dj/usr/src`.
