@@ -1,4 +1,5 @@
 (ns dj.cljs
+  (:refer-clojure :exclude [load-file])
   (:require [dj]
 	    [dj.git]
 	    [dj.io]
