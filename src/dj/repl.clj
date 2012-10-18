@@ -7,14 +7,17 @@
   (doseq [s (keys (ns-interns ns))]
     (ns-unmap ns s)))
 
-(defn logger [store]
+(defn logger
+  "returns a function that stores a 4-tuple of entity, attribute,
+value and time instance in the store"
+  [store]
   (fn [entity attribute value]
     (swap! store
 	   conj
-	   {:entity entity
-	    :attribute attribute
-	    :value value
-	    :time (java.util.Date.)})))
+           [entity
+            attribute
+            value
+            (java.util.Date.)])))
 
 (def store (atom []))
 
