@@ -32,6 +32,13 @@ value and time instance in the store"
 		  c#)
      c#))
 
+(defmacro loge [entity code]
+  `(let [c# ~code]
+     (dj.repl/log* ~entity
+                   :returned
+                   c#)
+     c#))
+
 (defmacro def-log-code-macro
   "creates a code logging macro. Takes a name and a symbol of the
   logger fn (no quote necessary but please fully qualify) that must
