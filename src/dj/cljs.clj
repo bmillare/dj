@@ -1,37 +1,19 @@
 (ns dj.cljs
   (:refer-clojure :exclude [load-file])
-  (:require [dj]
-	    [dj.git]
-	    [dj.io]
-            [dj.cljs]
-	    [dj.classloader]
-	    [clojure.java.shell :as sh]
-	    [cemerick.piggieback]
-	    [cljs.analyzer]
-	    [cljs.repl]
-	    [cljs.repl.browser]))
+  (:require [dj.cljs.install]
+            [cljs.repl]
+            [cljs.repl.browser]
+            [cljs.analyzer :as ca]))
 
-(defn add-cljs-to-classpath!
-  ([cljs-dir]
-     (let [cljs-dir (dj.io/file cljs-dir)
-	   paths (concat (filter #(not= % (dj.io/file cljs-dir "lib/clojure.jar"))
-				 (dj.io/ls (dj.io/file cljs-dir "lib")))
-			 (map #(dj.io/file cljs-dir %)
-			      ["src/clj"
-			       "src/cljs"
-			       "test/cljs"]))]
-       (doseq [p paths]
-	 (dj.classloader/add-classpath (.getPath ^java.io.File p)))))
-  ([]
-     (add-cljs-to-classpath! (dj.io/file dj/system-root "usr/src/clojurescript"))))
-
-(defn install-cljs! []
-  (let [cljs-dir (dj.io/file dj/system-root "usr/src")]
-    (when-not (dj.io/exists? (dj.io/file cljs-dir "clojurescript"))
-      (dj.git/clone "git://github.com/clojure/clojurescript.git"
-		    cljs-dir)
-      (sh/sh "script/bootstrap"
-	     :dir (dj.io/file cljs-dir "clojurescript")))))
+(defmacro capture-out-err [& body]
+  `(let [o# (java.io.StringWriter.)
+         e# (java.io.StringWriter.)]
+     (binding [*out* o#
+               *err* e#]
+       (let [r# ~@body]
+         {:return r#
+          :out (str o#)
+          :error (str e#)}))))
 
 (defn ->cljs-browser-env
   "port: for repl/server
@@ -59,33 +41,15 @@ Use load-file or load-namespace to do dynamic development"
       (deref [this]
         repl-env))))
 
-(defn cljs-repl
-  "delegates to cemerick.piggieback"
-  [cljs-browser-env]
-  (cemerick.piggieback/cljs-repl
-   :repl-env @cljs-browser-env))
-
-(defmacro capture-out-err [& body]
-  `(let [o# (java.io.StringWriter.)
-         e# (java.io.StringWriter.)]
-     (binding [*out* o#
-               *err* e#]
-       (let [r# ~@body]
-         {:return r#
-          :out (str o#)
-          :error (str e#)}))))
-
 (defn cljs-eval
   "note this accepts the object returned from ->cljs-browser-env, not a repl-env"
   [cljs-browser-env form]
-  (if (= form :cljs/quit)
-    {:return :cljs/quit
-     :out ""
-     :error ""}
-    (capture-out-err
-     (cemerick.piggieback/cljs-eval @cljs-browser-env
-                                    form
-                                    nil))))
+  (capture-out-err
+   (cljs.repl/evaluate-form @cljs-browser-env
+                            {:context :statement :locals {}
+                             :ns (ca/get-namespace ca/*cljs-ns*)}
+                            "<dj.cljs/cljs-eval>"
+                            form)))
 
 (defn load-file [cljs-browser-env f]
   (cljs.repl/load-file @cljs-browser-env f))

@@ -159,7 +159,10 @@
     (.setMessage c (or message "default"))
     (.call c)))
 
-(defn commit [file options]
+(defn commit
+  "options must be a map with probably 'all' set to true and 'message'
+  set to something"
+  [file options]
   (with-dcp commit* file options))
 
 (defn diff [file]
