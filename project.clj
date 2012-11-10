@@ -8,4 +8,4 @@
   :injections [(require '[dj.repl]
 			'[dj.dependencies]
 			'[clojure.tools.namespace.repl])]
-  :profiles {:database {:dependencies [[com.datomic/datomic-free "0.8.3546"]]}})
+  :profiles {:database {:dependencies [[com.datomic/datomic-free "0.8.3599"]]}})
