@@ -218,3 +218,18 @@ else returns form2."
   (if (eval check)
     form1
     form2))
+
+(defmacro var-let
+  "like let but each binding is to a var. All var names are
+  initialized to nil before hand so that they are forward
+  referenced. This allows circular definitions which is useful for
+  things like defining grammars."
+  [bindings & body]
+  (let [pairs (partition 2 bindings)
+        symbols (map first pairs)]
+    `(with-local-vars ~(vec (apply concat (for [s symbols]
+                                            (list s nil))))
+       ~@(for [[s v] pairs]
+           `(var-set ~s
+                     ~v))
+       ~@body)))
