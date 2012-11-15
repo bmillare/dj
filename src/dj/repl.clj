@@ -1,5 +1,19 @@
 (ns dj.repl
-  (:require [clojure.pprint]))
+  (:require [clojure.pprint]
+            [dj.io]
+            [dj]))
+
+(defn loader
+  "loads cljs file relative to project directory"
+  ([project-name name-file]
+     ;; for whatever reason, load-file on code that alters the
+     ;; classpath doesn't get respected, need to load code with eval
+     ;; manually
+     (eval (read-string (str "(do "
+                             (dj.io/eat (dj.io/file dj/system-root "usr/src" project-name (str name-file ".clj")))
+                             ")"))))
+  ([project-name]
+     (loader project-name "loader")))
 
 (defn unmap-ns
   "unmap everything from a ns"
