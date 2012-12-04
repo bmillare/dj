@@ -3,6 +3,7 @@
 	    [dj.git]
 	    [dj.io]
             [dj.classloader]
+            [dj.dependencies]
 	    [clojure.java.shell :as sh]))
 
 (defn add-cljs-to-classpath!
@@ -13,9 +14,10 @@
 			 (map #(dj.io/file cljs-dir %)
 			      ["src/clj"
 			       "src/cljs"
-			       "test/cljs"]))]
+			       "test/cljs"
+                               "closure/library/third_party/closure"]))]
        (doseq [p paths]
-	 (dj.classloader/add-classpath (.getPath ^java.io.File p)))))
+         (dj.classloader/add-classpath (.getPath ^java.io.File p)))))
   ([]
      (add-cljs-to-classpath! (dj.io/file dj/system-root "usr/src/clojurescript"))))
 
