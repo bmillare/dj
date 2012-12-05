@@ -1,6 +1,8 @@
 (ns dj.cljs
   (:refer-clojure :exclude [load-file])
-  (:require [dj.cljs.install]
+  (:require [dj]
+            [dj.io]
+            [dj.cljs.install]
             [cljs.repl]
             [cljs.repl.browser]
             [cljs.analyzer :as ca]))
@@ -17,7 +19,7 @@
 
 (defn ->cljs-browser-env
   "port: for repl/server
-working-dir: path/file to generated js
+working-dir: path/file to generated js (dj/system-root relative)
 
 Creates a browser connected evaluation environment object and returns
 it. This object wraps a repl-env
@@ -28,18 +30,23 @@ Make sure advanced optimizations is not activated. Simple works though.
 
 Use load-file or load-namespace to do dynamic development"
   [opts]
-  (let [{:keys [port working-dir]} opts
-        repl-env (cljs.repl.browser/repl-env :port port :working-dir working-dir)]
-    (reify
-      dj.repl/Lifecycle
-      (start [this]
-        (doto repl-env
-          cljs.repl/-setup))
-      (stop [this]
-        (cljs.repl/-tear-down repl-env))
-      clojure.lang.IDeref
-      (deref [this]
-        repl-env))))
+  (let [{:keys [port working-dir]} opts]
+    (dj.io/rm (dj.io/file dj/system-root
+                          "out"))
+    (dj.io/rm (dj.io/file dj/system-root
+                          working-dir))
+    (let [repl-env (cljs.repl.browser/repl-env :port port
+                                               :working-dir working-dir)]
+      (reify
+        dj.repl/Lifecycle
+        (start [this]
+          (doto repl-env
+            cljs.repl/-setup))
+        (stop [this]
+          (cljs.repl/-tear-down repl-env))
+        clojure.lang.IDeref
+        (deref [this]
+          repl-env)))))
 
 (defn cljs-eval
   "note this accepts the object returned from ->cljs-browser-env, not a repl-env"
