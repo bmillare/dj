@@ -21,6 +21,20 @@
   (doseq [s (keys (ns-interns ns))]
     (ns-unmap ns s)))
 
+(defn map-logger [store]
+  (fn [ret-val m]
+    (swap! store
+	   into
+           (let [m' (assoc m
+                      :return ret-val)]
+             (reduce-kv (fn [ret k v]
+                          (conj ret [m'
+                                     k
+                                     v]))
+                        []
+                        m')))
+    ret-val))
+
 (defn logger
   "returns a function that stores a 4-tuple of entity, attribute,
 value and time instance in the store"

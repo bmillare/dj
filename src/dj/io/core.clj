@@ -176,7 +176,17 @@
 	      (sh/sh "ionice" "-c" "3" "scp" "-r" "-P" (str port) in (str username "@" server ":" path)))))
 
 (defmethod cp [remote-file remote-file] [in out]
-	   (throw (Exception. "not implemented")))
+  (throw (Exception. "not implemented")))
+
+(defmacro capture-out-err [& body]
+  `(let [o# (java.io.StringWriter.)
+         e# (java.io.StringWriter.)]
+     (binding [*out* o#
+               *err* e#]
+       (let [r# ~@body]
+         {:return r#
+          :out (str o#)
+          :error (str e#)}))))
 
 (defn new-persistent-ref
     "returns a ref with a watcher that writes to file contents of ref

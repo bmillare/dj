@@ -103,10 +103,22 @@ Example usage:
  (update-vals {:a 1 :b 2} + 3)
 => {:a 4 :b 5}
 "
-  ([m f & args]
+  ([m f x]
      (persistent!
       (reduce-kv (fn [ret k v]
-                   (assoc! ret k (apply f v args)))
+                   (assoc! ret k (f v x)))
+                 (transient {})
+                 m)))
+  ([m f x y]
+     (persistent!
+      (reduce-kv (fn [ret k v]
+                   (assoc! ret k (f v x y)))
+                 (transient {})
+                 m)))
+  ([m f x y & args]
+     (persistent!
+      (reduce-kv (fn [ret k v]
+                   (assoc! ret k (apply f v x y args)))
                  (transient {})
                  m)))
   ([m f]

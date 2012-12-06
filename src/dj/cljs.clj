@@ -7,16 +7,6 @@
             [cljs.repl.browser]
             [cljs.analyzer :as ca]))
 
-(defmacro capture-out-err [& body]
-  `(let [o# (java.io.StringWriter.)
-         e# (java.io.StringWriter.)]
-     (binding [*out* o#
-               *err* e#]
-       (let [r# ~@body]
-         {:return r#
-          :out (str o#)
-          :error (str e#)}))))
-
 (defn ->cljs-browser-env
   "port: for repl/server
 working-dir: path/file to generated js (dj/system-root relative)
@@ -51,7 +41,7 @@ Use load-file or load-namespace to do dynamic development"
 (defn cljs-eval
   "note this accepts the object returned from ->cljs-browser-env, not a repl-env"
   [cljs-browser-env form]
-  (capture-out-err
+  (dj.io/capture-out-err
    (cljs.repl/evaluate-form @cljs-browser-env
                             {:context :statement :locals {}
                              :ns (ca/get-namespace ca/*cljs-ns*)}
