@@ -1,6 +1,7 @@
 (ns dj.git
   (:require [dj]
-	    [dj.io]))
+	    [dj.io]
+            [dj.source]))
 
 (defrecord git-logger [log]
   com.jcraft.jsch.Logger
@@ -168,6 +169,37 @@
 (defn diff [file]
   (-> (.diff (org.eclipse.jgit.api.Git/open file))
       (.call)))
+
+(defn diff-entry-map [d]
+  {:change-type (.toString (.getChangeType d))
+   :new-id (.getNewId d)
+   :new-mode (.getNewMode d)
+   :new-path (.getNewPath d)
+   :old-id (.getOldId d)
+   :old-mode (.getOldMode d)
+   :old-path (.getOldPath d)
+   :score (.getScore d)})
+
+(defn changed-projects []
+  (reduce (fn [m f]
+            (if (and (.isDirectory f)
+                     (dj.io/exists? (dj.io/file f ".git")))
+              (let [d-results (diff f)]
+                (if (empty? d-results)
+                  m
+                  (assoc m
+                    (dj.io/get-path f)
+                    (map (fn [d]
+                           (let [change-type (.toString (.getChangeType d))
+                                 new-path (.getNewPath d)
+                                 old-path (.getOldPath d)
+                                 score (.getScore d)]
+                             (str change-type "(" score "): " old-path " -> " new-path)))
+                         d-results))))
+              m))
+          {}
+          (list* dj/system-root
+                 (dj.io/ls (dj.io/file dj/system-root "usr/src")))))
 
 (defn add [file filepattern]
   (-> (.add (org.eclipse.jgit.api.Git/open file))
