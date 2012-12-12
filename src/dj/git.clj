@@ -180,26 +180,35 @@
    :old-path (.getOldPath d)
    :score (.getScore d)})
 
-(defn changed-projects []
-  (reduce (fn [m f]
-            (if (and (.isDirectory f)
-                     (dj.io/exists? (dj.io/file f ".git")))
-              (let [d-results (diff f)]
-                (if (empty? d-results)
-                  m
-                  (assoc m
-                    (dj.io/get-path f)
-                    (map (fn [d]
-                           (let [change-type (.toString (.getChangeType d))
-                                 new-path (.getNewPath d)
-                                 old-path (.getOldPath d)
-                                 score (.getScore d)]
-                             (str change-type "(" score "): " old-path " -> " new-path)))
-                         d-results))))
-              m))
-          {}
-          (list* dj/system-root
-                 (dj.io/ls (dj.io/file dj/system-root "usr/src")))))
+(defn changed-projects
+  "
+Returns map of paths -> seq of strings describing changes for git repository
+
+Default set of files are dj and the dj/usr/src/* directories
+"
+  ([files]
+     (reduce (fn [m f]
+               (if (and (.isDirectory f)
+                        (dj.io/exists? (dj.io/file f ".git")))
+                 (let [d-results (diff f)]
+                   (if (empty? d-results)
+                     m
+                     (assoc m
+                       (dj.io/get-path f)
+                       (map (fn [d]
+                              (let [change-type (.toString (.getChangeType d))
+                                    new-path (.getNewPath d)
+                                    old-path (.getOldPath d)
+                                    score (.getScore d)]
+                                (str change-type "(" score "): " old-path " -> " new-path)))
+                            d-results))))
+                 m))
+             {}
+             files))
+  ([]
+     (changed-projects
+      (list* dj/system-root
+             (dj.io/ls (dj.io/file dj/system-root "usr/src"))))))
 
 (defn add [file filepattern]
   (-> (.add (org.eclipse.jgit.api.Git/open file))
