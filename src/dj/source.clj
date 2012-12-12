@@ -1,5 +1,5 @@
 (ns dj.source
-  (:refer-clojure :exclude [re-find])
+  (:refer-clojure :exclude [find re-find])
   (:require [dj.io]))
 
 (defn find
