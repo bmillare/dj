@@ -239,9 +239,10 @@ else returns form2."
   [bindings & body]
   (let [pairs (partition 2 bindings)
         symbols (map first pairs)]
-    `(with-local-vars ~(vec (apply concat (for [s symbols]
-                                            (list s nil))))
+    `(let ~(vec (apply concat (for [s symbols]
+                                (list s '(clojure.lang.Var/create)))))
        ~@(for [[s v] pairs]
-           `(var-set ~s
-                     ~v))
+           `(.bindRoot ^clojure.lang.Var
+                       ~s
+                       ~v))
        ~@body)))
