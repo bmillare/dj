@@ -27,9 +27,12 @@
   (if (= java.lang.String (type entry))
     (let [components (.split #"/" entry)]
       (if (re-find #"http://|git://|https://|ssh://" entry)
-	(let [[_ n] (re-find #"((?:\w|-|_|\.)+)\.git" (last components))]
+	(let [[_ n] (re-find #"((?:\w|-|_|\.)+)" (last components))]
 	  {:dependency-type :git
-	   :name n
+	   :name (if (= (dj/substring n -4)
+                        ".git")
+                   (dj/substring n 0 -4)
+                   n)
 	   :git-path entry})
 	(if (= "clojure" (first components))
 	  {:dependency-type :git
@@ -73,7 +76,7 @@
 ;; content with source types
 (defmethod resolve-dj-dependency :git [entry-obj]
 	   (let [f (resolve-path (:name entry-obj))]
-	     (when-not (dj.io/exists? f)
+             (when-not (dj.io/exists? f)
 	       (dj.git/clone (:git-path entry-obj)))
 	     (resolve-project (dj.io/get-path f))))
 
