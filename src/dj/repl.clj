@@ -21,93 +21,124 @@
   (doseq [s (keys (ns-interns ns))]
     (ns-unmap ns s)))
 
-(defn map-logger [store]
-  (fn [ret-val m]
-    (swap! store
-	   into
-           (let [m' (assoc m
-                      :return ret-val)]
-             (reduce-kv (fn [ret k v]
-                          (conj ret [m'
-                                     k
-                                     v]))
-                        []
-                        m')))
-    ret-val))
+(defmacro deftracer
+  "
 
-(defn logger
-  "returns a function that stores a 4-tuple of entity, attribute,
-value and time instance in the store"
-  [store]
-  (fn [entity attribute value]
-    (swap! store
-	   conj
-           [entity
-            attribute
-            value
-            (java.util.Date.)])))
+define your own tracing macro in your namespace that is bound to your
+walker
+"
+  [name trace-walker]
+  `(let [tw# ~trace-walker]
+     (~'defmacro ~name [~'code]
+       (tw# ~'code))))
 
-(def store (atom []))
+(defn ->trace-walker
+  "
 
-(def log*
-     "default logger. uses dj.repl/store as the store"
-     (logger store))
+logger-code-fn: side effect fn that takes code, nesting-level and
+result of code
 
-(defn log-code-macro* [code logger-sym]
-  `(let [c# ~code]
-     (~logger-sym '~code
-		  :returned
-		  c#)
-     c#))
+returns a code walking fn that calls logger-code-fn before returning
+result of code
 
-(defmacro loge [entity code]
-  `(let [c# ~code]
-     (dj.repl/log* ~entity
-                   :returned
-                   c#)
-     c#))
+Current (BUG!) unhandled cases
+recur
+case
+quote 'this is important so we don't evaluate code that shouldn't be evaluated'
 
-(defmacro def-log-code-macro
-  "creates a code logging macro. Takes a name and a symbol of the
-  logger fn (no quote necessary but please fully qualify) that must
-  accept an entity, attribute, and value"
-  [logger-name logger-sym]
-  `(let [logger-sym# '~logger-sym]
-     (defmacro ~logger-name
-       ~(str "generated loging macro for the " logger-sym " logger")
-       [~'code]
-       (log-code-macro* ~'code logger-sym#))))
+Current partial handling
+try
+for
 
-(def-log-code-macro log dj.repl/log*)
+Future: Should probably add an id generator, this way we can actually
+compute the counts
 
-(defmacro log->thread [x form chain-sym]
-  `(let [out# (-> ~x
-		  ~form)]
-     (swap! ~chain-sym
-	    conj
-	    ['~form out#])
-     out#))
+Probably should put this in its own library.
 
-(defmacro log->
-  "Like -> but logs the value at each step."
-  [options x & forms]
-  (let [chain-sym (gensym "chain")]
-    `(let [options# ~options
-	   s# (:store options#)
-	   log-fn# (:log-fn options#)
-	   x# ~x
-	   ~chain-sym (atom [['~x x#]])
-	   out# (-> x#
-		    ~@(map (fn [form]
-			     `(log->thread ~form ~chain-sym))
-			   forms))]
-       (swap! s#
-	      log-fn#
-	      (into [['~x x#]]
-		    (mapv (fn [[[_# pv#] [f# v#]]]
-			    [(macroexpand-1 (list '-> pv# f#)) v#])
-			  (partition 2 1 @~chain-sym))))
-       out#)))
+For additional extensibility, we can use CPS for case functions, and
+allow composing new dispatch cases with these primitives.
+
+For example, this will be important for macroforms that expand into recurs.
+
+"
+  [logger-code-fn]
+  (fn trace-walk-depth
+    ([code]
+       (trace-walk-depth code 0))
+    ([code depth]
+       (let [;; wrap counting
+             trace-walk (fn [code]
+                          (trace-walk-depth code (inc depth)))
+             ;;; All the cases
+             trace-hashmap (fn []
+                             (reduce-kv (fn [m k v]
+                                          (assoc m
+                                            (trace-walk k)
+                                            (trace-walk v)))
+                                        {}
+                                        code))
+             trace-vector (fn []
+                            (mapv trace-walk code))
+             trace-singleton (fn []
+                               code)
+             trace-call (fn []
+                          (list* (first code)
+                                 (map trace-walk
+                                      (rest code))))
+             trace-let (fn []
+                         `(let ~(mapv (fn [i e]
+                                        (if (odd? i)
+                                          (trace-walk e)
+                                          e))
+                                      (range (count (second code)))
+                                      (second code))
+                            ~@(map trace-walk (drop 2 code))))
+             trace-do (fn []
+                        `(do
+                           ~@(map trace-walk (rest code))))
+             trace-fn (fn []
+                        (concat (take 2 code)
+                                (map trace-walk (drop 2 code))))
+             trace-if-let (fn []
+                            (concat ['if-let (update-in (second code)
+                                                        [1]
+                                                        trace-walk)]
+                                    (map trace-walk (drop 2 code))))
+             trace-for (fn []
+                         (concat (take 2 code) ;; ignoring bindings for now
+                                 (map trace-walk (drop 2 code))))
+             trace-thread (fn []
+                            code)
+             ;; dispatching logic
+             f (if (coll? code)
+                 (if (map? code)
+                   trace-hashmap
+                   (if (vector? code)
+                     trace-vector
+                     (case (first code) ;; BUG, can't trace a recur since that would no longer make it tail recursive
+                       let trace-let
+                       do trace-do
+                       fn trace-fn
+                       if-let trace-if-let
+                       for trace-for
+                       try (fn [] code) ;; ignore for now
+                       -> trace-thread
+                       trace-call))) ;; <- probable future extension point
+                 trace-singleton)
+             r (gensym "return")]
+         `(let [~r ~(f)]
+            ~(logger-code-fn code
+                             depth
+                             r)
+            ~r)))))
+
+(defn ->simple-trace-logger [store]
+  (fn [code depth r]
+    `(swap! ~store
+            conj
+            {:depth ~depth
+             :code '~code
+             :result ~r})))
 
 (defprotocol Lifecycle
   (start [component])
