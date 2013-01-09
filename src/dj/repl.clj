@@ -32,6 +32,15 @@ walker
      (~'defmacro ~name [~'code]
        (tw# ~'code))))
 
+(defn ->simple-trace-logger [store]
+  (fn [id code depth r]
+    `(swap! ~store
+            conj
+            {:id ~id
+             :depth ~depth
+             :code '~code
+             :result ~r})))
+
 (defn ->trace-walker
   "
 
@@ -61,84 +70,83 @@ allow composing new dispatch cases with these primitives.
 For example, this will be important for macroforms that expand into recurs.
 
 "
-  [logger-code-fn]
-  (fn trace-walk-depth
-    ([code]
-       (trace-walk-depth code 0))
-    ([code depth]
-       (let [;; wrap counting
-             trace-walk (fn [code]
-                          (trace-walk-depth code (inc depth)))
-             ;;; All the cases
-             trace-hashmap (fn []
-                             (reduce-kv (fn [m k v]
-                                          (assoc m
-                                            (trace-walk k)
-                                            (trace-walk v)))
-                                        {}
-                                        code))
-             trace-vector (fn []
-                            (mapv trace-walk code))
-             trace-singleton (fn []
-                               code)
-             trace-call (fn []
-                          (list* (first code)
-                                 (map trace-walk
-                                      (rest code))))
-             trace-let (fn []
-                         `(let ~(mapv (fn [i e]
-                                        (if (odd? i)
-                                          (trace-walk e)
-                                          e))
-                                      (range (count (second code)))
-                                      (second code))
-                            ~@(map trace-walk (drop 2 code))))
-             trace-do (fn []
-                        `(do
-                           ~@(map trace-walk (rest code))))
-             trace-fn (fn []
-                        (concat (take 2 code)
-                                (map trace-walk (drop 2 code))))
-             trace-if-let (fn []
-                            (concat ['if-let (update-in (second code)
-                                                        [1]
-                                                        trace-walk)]
-                                    (map trace-walk (drop 2 code))))
-             trace-for (fn []
-                         (concat (take 2 code) ;; ignoring bindings for now
-                                 (map trace-walk (drop 2 code))))
-             trace-thread (fn []
-                            code)
-             ;; dispatching logic
-             f (if (coll? code)
-                 (if (map? code)
-                   trace-hashmap
-                   (if (vector? code)
-                     trace-vector
-                     (case (first code) ;; BUG, can't trace a recur since that would no longer make it tail recursive
-                       let trace-let
-                       do trace-do
-                       fn trace-fn
-                       if-let trace-if-let
-                       for trace-for
-                       try (fn [] code) ;; ignore for now
-                       -> trace-thread
-                       trace-call))) ;; <- probable future extension point
-                 trace-singleton)
-             r (gensym "return")]
-         `(let [~r ~(f)]
-            ~(logger-code-fn code
-                             depth
-                             r)
-            ~r)))))
-
-(defn ->simple-trace-logger [store]
-  (fn [code depth r]
-    `(swap! ~store
-            conj
-            {:depth ~depth
-             :code '~code
-             :result ~r})))
+  [logger-code-fn depth-limit]
+  (let [id-counter (atom 0)]
+    (fn trace-walk-depth
+      ([code]
+         (trace-walk-depth code 0))
+      ([code depth]
+         (let [;; wrap counting
+               trace-walk (fn [code]
+                            (trace-walk-depth code (inc depth)))
+               ;; All the cases
+               trace-hashmap (fn []
+                               (reduce-kv (fn [m k v]
+                                            (assoc m
+                                              (trace-walk k)
+                                              (trace-walk v)))
+                                          {}
+                                          code))
+               trace-vector (fn []
+                              (mapv trace-walk code))
+               trace-singleton (fn []
+                                 code)
+               trace-call (fn []
+                            (list* (first code)
+                                   (map trace-walk
+                                        (rest code))))
+               trace-let (fn []
+                           `(let ~(mapv (fn [i e]
+                                          (if (odd? i)
+                                            (trace-walk e)
+                                            e))
+                                        (range (count (second code)))
+                                        (second code))
+                              ~@(map trace-walk (drop 2 code))))
+               trace-do (fn []
+                          `(do
+                             ~@(map trace-walk (rest code))))
+               trace-fn (fn []
+                          (concat (take 2 code)
+                                  (map trace-walk (drop 2 code))))
+               trace-if-let (fn []
+                              (concat ['if-let (update-in (second code)
+                                                          [1]
+                                                          trace-walk)]
+                                      (map trace-walk (drop 2 code))))
+               trace-for (fn []
+                           (concat (take 2 code) ;; ignoring bindings for now, I'm lazy for all the cases
+                                   (map trace-walk (drop 2 code))))
+               trace-thread (fn []
+                              code)
+               r (gensym "return")
+               wrap (fn [f]
+                      (swap! id-counter inc)
+                      `(let [~r ~(f)]
+                         ~(logger-code-fn @id-counter
+                                          code
+                                          depth
+                                          r)
+                         ~r))]
+           ;; dispatching logic
+           (if (< depth depth-limit)
+             (if (coll? code)
+               (if (map? code)
+                 (wrap trace-hashmap)
+                 (if (vector? code)
+                   (wrap trace-vector)
+                   (case (first code)
+                     let (wrap trace-let)
+                     do (wrap trace-do)
+                     fn (wrap trace-fn)
+                     if-let (wrap trace-if-let)
+                     for (wrap trace-for)
+                     try (fn [] code) ;; ignore for now, I'm lazy for all the cases
+                     -> (wrap trace-thread)
+                     recur (trace-call) ;; note we can't have a let around recur since it would no longer make it tail recursive
+                     (wrap trace-call)))) ;; <- probable future extension point
+               (wrap trace-singleton))
+             code))))))
 
 (defprotocol Lifecycle
   (start [component])
