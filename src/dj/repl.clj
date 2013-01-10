@@ -111,7 +111,7 @@ For example, this will be important for macroforms that expand into recurs.
                                        (map (fn [[s e]]
                                               [s (trace-walk e
                                                              (inc depth)
-                                                             [[:binding s]])])
+                                                             [[:binding `(quote s)]])])
                                             (partition 2 (second code)))))
                        ~@(map trace-walk-depth (drop 2 code)))))
                  (trace-do [wrap]
