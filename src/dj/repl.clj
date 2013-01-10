@@ -48,16 +48,11 @@ returns a code walking fn that calls logger-code-fn before returning
 result of code
 
 Current (BUG!) unhandled cases
-recur
-case
 quote 'this is important so we don't evaluate code that shouldn't be evaluated'
 
 Current partial handling
 try
 for
-
-Future: Should probably add an id generator, this way we can actually
-compute the counts
 
 Probably should put this in its own library.
 
@@ -101,17 +96,19 @@ For example, this will be important for macroforms that expand into recurs.
                  (trace-singleton [wrap]
                    (wrap code))
                  (trace-call [wrap]
-                   (wrap
-                    (list* (first code)
-                           (map trace-walk-depth
-                                (rest code)))))
+                   (if (:macro (meta (resolve (first code))))
+                     (trace-walk-depth (macroexpand-1 code))
+                     (wrap
+                      (list* (first code)
+                             (map trace-walk-depth
+                                  (rest code))))))
                  (trace-let [wrap]
                    (wrap
                     `(let ~(vec (apply concat
                                        (map (fn [[s e]]
                                               [s (trace-walk e
                                                              (inc depth)
-                                                             [[:binding `(quote s)]])])
+                                                             [[:binding `(quote ~s)]])])
                                             (partition 2 (second code)))))
                        ~@(map trace-walk-depth (drop 2 code)))))
                  (trace-do [wrap]
@@ -134,7 +131,12 @@ For example, this will be important for macroforms that expand into recurs.
                             (map trace-walk-depth (drop 2 code)))))
                  (trace-vector [wrap]
                    (wrap
-                    (mapv trace-walk-depth code)))]
+                    (mapv trace-walk-depth code)))
+                 (trace-try [wrap]
+                   (wrap
+                    (concat (take 1 code)
+                            (map trace-walk-depth (drop-last (drop 1 code)))
+                            [(last code)])))]
            (if (< depth depth-limit)
              (if (coll? code)
                (if (map? code)
@@ -143,11 +145,13 @@ For example, this will be important for macroforms that expand into recurs.
                    (trace-vector wrap-log)
                    (case (first code)
                      let (trace-let identity)
+                     let* (trace-let identity)
                      do (trace-do identity)
                      fn (trace-fn wrap-log)
                      if-let (trace-if-let wrap-log)
                      for (trace-for wrap-log)
-                     try code ;; ignore for now, I'm lazy for all the cases
+                     doseq (trace-for wrap-log)
+                     try (trace-try wrap-log)
                      -> code ;; ignore for now, I'm lazy for all the cases
                      recur (trace-call identity) ;; note we can't have a let around recur since it would no longer make it tail recursive
                      (trace-call wrap-log)))) ;; <- probable future extension point
