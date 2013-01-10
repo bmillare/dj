@@ -151,6 +151,10 @@ For example, this will be important for macroforms that expand into recurs.
                      -> code ;; ignore for now, I'm lazy for all the cases
                      recur (trace-call identity) ;; note we can't have a let around recur since it would no longer make it tail recursive
                      (trace-call wrap-log)))) ;; <- probable future extension point
+               ;; Note for extension, should have everything you could want
+               ;; trace-call will call extend-fn and pass it everything
+               ;; [current wrapper, id-counter, code, depth, etc]
+               ;; if the extend-fn wants to recur, it can call trace-walk
                (trace-singleton wrap-log))
              code))))))
 
