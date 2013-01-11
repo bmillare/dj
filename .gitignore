@@ -4,3 +4,4 @@ target/
 tmp/
 out/
 .repl/
+.lein-repl-history

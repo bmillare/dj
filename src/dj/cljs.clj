@@ -5,6 +5,7 @@
             [dj.cljs.install]
             [cljs.repl]
             [cljs.repl.browser]
+            [cljs.repl.server]
             [cljs.analyzer :as ca]))
 
 (defn ->cljs-browser-env
@@ -31,7 +32,10 @@ Use load-file or load-namespace to do dynamic development"
         dj.repl/Lifecycle
         (start [this]
           (doto repl-env
-            cljs.repl/-setup))
+            cljs.repl/-setup)
+          (cljs.repl.server/dispatch-on :get
+                                        (fn [{:keys [path]} _ _] (not= path "/repl"))
+                                        cljs.repl.browser/send-static))
         (stop [this]
           (cljs.repl/-tear-down repl-env))
         clojure.lang.IDeref
