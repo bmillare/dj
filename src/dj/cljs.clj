@@ -32,10 +32,7 @@ Use load-file or load-namespace to do dynamic development"
         dj.repl/Lifecycle
         (start [this]
           (doto repl-env
-            cljs.repl/-setup)
-          (cljs.repl.server/dispatch-on :get
-                                        (fn [{:keys [path]} _ _] (not= path "/repl"))
-                                        cljs.repl.browser/send-static))
+            cljs.repl/-setup))
         (stop [this]
           (cljs.repl/-tear-down repl-env))
         clojure.lang.IDeref
