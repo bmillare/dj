@@ -21,6 +21,16 @@
   (doseq [s (keys (ns-interns ns))]
     (ns-unmap ns s)))
 
+(defn deflogger* [code store]
+  `(let [r# ~code]
+     (swap! ~store conj r#)
+     r#))
+
+(defmacro deflogger [name store]
+  `(~'defmacro ~name
+     [~'code]
+     (deflogger* ~'code '~store)))
+
 (defmacro deftracer
   "
 
