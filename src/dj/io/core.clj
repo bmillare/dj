@@ -301,6 +301,15 @@ possible without slowing down ref"
 		      0)
            buffer))))
 
+(defn binary->file
+  "
+outputs binary-array to a file
+"
+  [binary-array ^java.io.File f]
+  (with-open [fos (java.io.FileOutputStream. f)]
+    (.write fos binary-array))
+  f)
+
 (defn ^java.net.URI file->local-zip-uri
   "alpha"
   [^java.io.File file]
