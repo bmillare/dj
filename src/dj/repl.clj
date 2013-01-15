@@ -85,12 +85,17 @@ For example, this will be important for macroforms that expand into recurs.
           (letfn [(wrap-log [modified-code]
                     (swap! id-counter inc)
                     (let [r (gensym "return")
+                          s (gensym "start")
+                          e (gensym "end")
                           id @id-counter]
-                      `(let [~r ~modified-code]
+                      `(let [~s (java.lang.System/nanoTime)
+                             ~r ~modified-code
+                             ~e (java.lang.System/nanoTime)]
                          ~(logger-code-fn (into [[id :depth depth]
                                                  [id :code `(quote ~code)]
                                                  [id :result r]
-                                                 [id :date '(java.util.Date.)]]
+                                                 [id :start-time s]
+                                                 [id :end-time e]]
                                                 (mapv (fn [[k v]]
                                                         [id k v])
                                                       tuples)))
@@ -160,7 +165,7 @@ For example, this will be important for macroforms that expand into recurs.
                   (if (vector? code)
                     (trace-vector wrap-log)
                     (case (first code)
-                      let (trace-let identity)
+                      let (trace-let wrap-log)
                       let* (trace-let identity)
                       do (trace-do identity)
                       fn (trace-fn wrap-log)
