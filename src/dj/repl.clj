@@ -45,11 +45,16 @@ walker
        ([~'code ~'tuples]
           (tw# ~'code 0 ~'tuples)))))
 
-(defn ->tuple-trace-logger [store]
+(defn ->tuple-trace-logger [store tx-counter]
   (fn [tuples]
-    `(swap! ~store
-            into
-            ~tuples)))
+    `(let [t# ~tuples]
+       (swap! ~tx-counter inc)
+       (let [tx# @~tx-counter]
+         (swap! ~store
+                into
+                (mapv (fn [tuple#]
+                        (conj tuple# tx#))
+                      t#))))))
 
 (defn ->trace-walker
   "
