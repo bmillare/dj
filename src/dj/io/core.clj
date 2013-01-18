@@ -285,10 +285,13 @@ possible without slowing down ref"
 (defn eat-binary-file
   "not for large files"
   [^java.io.File file]
-  (io! (with-open [reader (clojure.java.io/input-stream file)]
-         (let [buffer (byte-array (.length file))]
-           (.read reader buffer)
-           buffer))))
+  #_ (io! (with-open [reader (clojure.java.io/input-stream file)]
+            (let [buffer (byte-array (.length file))]
+              (.read reader buffer)
+              buffer)))
+  (java.nio.file.Files/readAllBytes (java.nio.file.Paths/get
+                                     (get-path file)
+                                     (into-array String []))))
 
 (defn c-eat-binary-file
   "not for large files, appends null character"

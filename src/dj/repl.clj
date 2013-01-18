@@ -48,8 +48,7 @@ walker
 (defn ->tuple-trace-logger [store tx-counter]
   (fn [tuples]
     `(let [t# ~tuples]
-       (swap! ~tx-counter inc)
-       (let [tx# @~tx-counter]
+       (let [tx# (swap! ~tx-counter inc)]
          (swap! ~store
                 into
                 (mapv (fn [tuple#]
