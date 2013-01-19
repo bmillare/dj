@@ -282,17 +282,6 @@ possible without slowing down ref"
 	       0)
     a))
 
-(defn eat-binary-file
-  "not for large files"
-  [^java.io.File file]
-  #_ (io! (with-open [reader (clojure.java.io/input-stream file)]
-            (let [buffer (byte-array (.length file))]
-              (.read reader buffer)
-              buffer)))
-  (java.nio.file.Files/readAllBytes (java.nio.file.Paths/get
-                                     (get-path file)
-                                     (into-array String []))))
-
 (defn c-eat-binary-file
   "not for large files, appends null character"
   [^java.io.File file]
@@ -326,37 +315,52 @@ outputs binary-array to a file
                       (second (.split #"file:/+" (.toString (.toURI file)))))))
 
 (dj/compile-time-if (re-find #"^1\.[0-6]" (System/getProperty "java.version"))
-                    (defn unzip [^java.io.File file ^java.io.File dest-dir]
-                      (throw (Exception. "java7 required")))
-                    (defn unzip [^java.io.File file ^java.io.File dest-dir]
-                      (let [zip-fs (java.nio.file.FileSystems/newFileSystem (file->local-zip-uri file)
-                                                                            (java.util.HashMap.))
-                            no-follow-links (into-array java.nio.file.LinkOption
-                                                        [java.nio.file.LinkOption/NOFOLLOW_LINKS])]
-                        (try
-                          (let [dest-dir-path (java.nio.file.Paths/get (file->local-uri dest-dir))]
-                            (when (java.nio.file.Files/notExists dest-dir-path
-                                                                 no-follow-links)
-                              (java.nio.file.Files/createDirectory dest-dir-path (into-array java.nio.file.attribute.FileAttribute
-                                                                                             [])))
-                            (let [root (.getPath zip-fs "/" (into-array String []))]
-                              (java.nio.file.Files/walkFileTree root
-                                                                (proxy [java.nio.file.SimpleFileVisitor] []
-                                                                  (visitFile [file-path attrs]
-                                                                    (java.nio.file.Files/copy file-path
-                                                                                              (java.nio.file.Paths/get (.toString dest-dir-path)
-                                                                                                                       (into-array String [(.toString file-path)]))
-                                                                                              (into-array java.nio.file.StandardCopyOption
-                                                                                                          [java.nio.file.StandardCopyOption/REPLACE_EXISTING]))
-                                                                    java.nio.file.FileVisitResult/CONTINUE)
-                                                                  (preVisitDirectory [dir-path attrs]
-                                                                    (let [dir-to-create (java.nio.file.Paths/get (.toString dest-dir-path)
-                                                                                                                 (into-array String [(.toString dir-path)]))]
-                                                                      (when (java.nio.file.Files/notExists dir-to-create
-                                                                                                           no-follow-links)
-                                                                        (java.nio.file.Files/createDirectory dir-to-create
-                                                                                                             (into-array java.nio.file.attribute.FileAttribute
-                                                                                                                         []))))
-                                                                    java.nio.file.FileVisitResult/CONTINUE)))))
-                          (finally
-                           (.close zip-fs))))))
+                    (do
+                      (defn unzip [^java.io.File file ^java.io.File dest-dir]
+                        (throw (Exception. "java7 required")))
+                      (defn eat-binary-file
+                        "not for large files"
+                        [^java.io.File file]
+                        (java.nio.file.Files/readAllBytes (java.nio.file.Paths/get
+                                                           (get-path file)
+                                                           (into-array String [])))))
+                    (do
+                      (defn unzip [^java.io.File file ^java.io.File dest-dir]
+                        (let [zip-fs (java.nio.file.FileSystems/newFileSystem (file->local-zip-uri file)
+                                                                              (java.util.HashMap.))
+                              no-follow-links (into-array java.nio.file.LinkOption
+                                                          [java.nio.file.LinkOption/NOFOLLOW_LINKS])]
+                          (try
+                            (let [dest-dir-path (java.nio.file.Paths/get (file->local-uri dest-dir))]
+                              (when (java.nio.file.Files/notExists dest-dir-path
+                                                                   no-follow-links)
+                                (java.nio.file.Files/createDirectory dest-dir-path (into-array java.nio.file.attribute.FileAttribute
+                                                                                               [])))
+                              (let [root (.getPath zip-fs "/" (into-array String []))]
+                                (java.nio.file.Files/walkFileTree root
+                                                                  (proxy [java.nio.file.SimpleFileVisitor] []
+                                                                    (visitFile [file-path attrs]
+                                                                      (java.nio.file.Files/copy file-path
+                                                                                                (java.nio.file.Paths/get (.toString dest-dir-path)
+                                                                                                                         (into-array String [(.toString file-path)]))
+                                                                                                (into-array java.nio.file.StandardCopyOption
+                                                                                                            [java.nio.file.StandardCopyOption/REPLACE_EXISTING]))
+                                                                      java.nio.file.FileVisitResult/CONTINUE)
+                                                                    (preVisitDirectory [dir-path attrs]
+                                                                      (let [dir-to-create (java.nio.file.Paths/get (.toString dest-dir-path)
+                                                                                                                   (into-array String [(.toString dir-path)]))]
+                                                                        (when (java.nio.file.Files/notExists dir-to-create
+                                                                                                             no-follow-links)
+                                                                          (java.nio.file.Files/createDirectory dir-to-create
+                                                                                                               (into-array java.nio.file.attribute.FileAttribute
+                                                                                                                           []))))
+                                                                      java.nio.file.FileVisitResult/CONTINUE)))))
+                            (finally
+                             (.close zip-fs)))))
+                      (defn eat-binary-file
+                        "not for large files"
+                        [^java.io.File file]
+                        (io! (with-open [reader (clojure.java.io/input-stream file)]
+                               (let [buffer (byte-array (.length file))]
+                                 (.read reader buffer)
+                                 buffer))))))
