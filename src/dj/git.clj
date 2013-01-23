@@ -250,3 +250,10 @@ http://www.oracle.com/technetwork/java/javase/downloads/jce-7-download-432124.ht
 You may want to use github generated key, they appear to be more
 reliable on windows systems
 ")
+
+(defn project
+  "
+repl friendly file constructor relative to 'dj/usr/src'
+
+" [f]
+(dj.io/file dj/system-root "usr/src" f))
