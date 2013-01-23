@@ -27,7 +27,7 @@
   ;; java.lang.ClassLoader to NULL, depends on java implementation
   ;; knowledge
   (let [clazz java.lang.ClassLoader
-	field (.getDeclaredField clazz "sys_paths")] 
+	field (.getDeclaredField clazz "sys_paths")]
     (.setAccessible field true)
     (.set field clazz nil)
     (System/setProperty "java.library.path" (apply str (interpose (if (re-find #"(?i)windows"

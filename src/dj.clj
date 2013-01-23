@@ -129,7 +129,7 @@ Example usage:
                  m))))
 
 ;; Taken from Zachary Tellman's Potemkin
-(defmacro import-fn 
+(defmacro import-fn
   "Given a function in another namespace, defines a function by the
 same name in the current namespace.  Argument lists and doc-strings
 are preserved."
