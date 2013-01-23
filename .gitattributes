@@ -1,5 +1,6 @@
 * text=auto
 *.clj text
 *.cljs text
+*.html text
 *.bat text eol=crlf
 *.sh text
