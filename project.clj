@@ -8,6 +8,6 @@
   :injections [(require '[dj.repl]
 			'[dj.dependencies]
 			'[clojure.tools.namespace.repl])]
-  :profiles {:database {:dependencies [[com.datomic/datomic-free "0.8.3599"]]}
+  :profiles {:database {:dependencies [[com.datomic/datomic-free "0.8.3731"]]}
              :cljs {:dependencies [[org.clojure/google-closure-library "0.0-2029"]
                                    [org.clojure/google-closure-library-third-party "0.0-2029"]]}})
