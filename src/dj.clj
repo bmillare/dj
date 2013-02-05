@@ -246,3 +246,15 @@ else returns form2."
                        ~s
                        ~v))
        ~@body)))
+
+(defn index-of
+  "
+given something indexable, and predicate, returns index of first true
+"
+  ([v predicate accessor-fn]
+     (loop [idx 0]
+       (if (predicate (accessor-fn v idx))
+         idx
+         (recur (inc idx)))))
+  ([v predicate]
+     (index-of v predicate nth)))
