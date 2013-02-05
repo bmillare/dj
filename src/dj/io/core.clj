@@ -305,14 +305,16 @@ outputs binary-array to a file
 (defn ^java.net.URI file->local-zip-uri
   "alpha"
   [^java.io.File file]
-  (java.net.URI. (str "jar:file:///"
-                      (second (.split #"file:/+" (.toString (.toURI file)))))))
+  (java.net.URI. (-> (str "jar:file:///"
+                          (second (.split #"file:/+" (.toString (.toURI file)))))
+                     (dj/replace-map {"%20" "%2520"}))))
 
 (defn ^java.net.URI file->local-uri
   "alpha"
   [^java.io.File file]
-  (java.net.URI. (str "file:///"
-                      (second (.split #"file:/+" (.toString (.toURI file)))))))
+  (java.net.URI. (-> (str "file:///"
+                          (second (.split #"file:/+" (.toString (.toURI file)))))
+                     #_ (dj/replace-map {"%20" "%2520"}))))
 
 (dj/compile-time-if (re-find #"^1\.[0-6]" (System/getProperty "java.version"))
                     (do
