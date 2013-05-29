@@ -1,7 +1,13 @@
 (ns dj.repl
-  (:require [clojure.pprint]
+  (:require [clojure.repl]
+            [clojure.pprint]
             [dj.io]
             [dj]))
+
+(defn hostname
+  "get hostname"
+  []
+  (.getHostName (java.net.InetAddress/getLocalHost)))
 
 (defn loader
   "loads cljs file relative to project directory"
