@@ -48,6 +48,12 @@
   (let [is (resource-as-stream str-path)]
     (apply str (map char (take-while #(not= % -1) (repeatedly #(.read is)))))))
 
+(defn load-resource [str-path]
+  (-> str-path
+      resource-as-str
+      read-string
+      eval))
+
 (defn find-resource
   (^java.io.File [relative-path]
      (find-resource relative-path (second (pom/classloader-hierarchy))))
