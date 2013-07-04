@@ -258,3 +258,23 @@ given something indexable, and predicate, returns index of first true
          (recur (inc idx)))))
   ([v predicate]
      (index-of v predicate nth)))
+
+(defn hold
+  "returns a hold, which can be deref'd its value only once it has
+  been allowed to release"
+  [v]
+  (let [d (java.util.concurrent.CountDownLatch. 1)]
+    (reify
+      clojure.lang.IDeref
+      (deref [_]
+        (.await d)
+        v)
+      clojure.lang.IPending
+      (isRealized [this]
+        (zero? (.getCount d)))
+      clojure.lang.IFn
+      (invoke
+        [this]
+        (when (pos? (.getCount d))
+          (.countDown d))
+        this))))
