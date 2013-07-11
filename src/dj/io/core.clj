@@ -11,6 +11,10 @@
 						     p))
 						 paths))))
 
+(defmethod clojure.core/print-method java.io.File [^java.io.File o ^java.io.Writer writer]
+  (.write writer
+          (str "#java.io.File[\"" (.getPath o) "\"]")))
+
 (defn absolute-path? [str-path]
   (= (first str-path)
 	 \/))
