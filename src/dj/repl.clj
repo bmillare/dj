@@ -27,15 +27,49 @@
   (doseq [s (keys (ns-interns ns))]
     (ns-unmap ns s)))
 
-(defn deflogger* [code store]
-  `(let [r# ~code]
-     (swap! ~store conj r#)
-     r#))
+(defmacro log
+  "
 
-(defmacro deflogger [name store]
-  `(~'defmacro ~name
-     [~'code]
-     (deflogger* ~'code '~store)))
+uses store-fn to log result, code to produce the result, and the local
+context
+
+store-fn accepts the value to be logged
+"
+  [store-fn
+   form]
+  (let [symbols (keys &env)]
+    `(let [r# ~form]
+       (~store-fn {:local-context ~(zipmap (map (fn [sym]
+                                                  `(quote ~sym))
+                                                symbols)
+                                           symbols)
+                   :result r#
+                   :form '~form})
+       r#)))
+
+(defmacro local-context
+  "returns local bindings in a hashmap"
+  []
+  (let [symbols (keys &env)]
+    (zipmap (map (fn [sym] `(quote ~sym)) symbols) symbols)))
+
+(defn tagged-logger-fn
+  "returns a fn you can add to clojure.core/*data-readers*
+
+store-fn-symbol should be a symbol that resolves to the store-fn (see dj.repl/log)"
+  [store-fn-symbol]
+  (fn [arg]
+    `(log ~store-fn-symbol
+          ~arg)))
+
+(def store (atom []))
+(defn store-fn* [v]
+  (swap! store
+         conj
+         v))
+
+(dj.io/assoc-data-reader! 'dj.repl/log
+                          (tagged-logger-fn 'dj.repl/store-fn*))
 
 (defmacro deftracer
   "

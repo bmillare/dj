@@ -86,60 +86,60 @@
 (defrecord remote-file [path username server port]
   Ipoop
   (poop [dest txt append]
-	(if append
-	  (ssh username server port (str "cat - >> " path) :in txt)
-	  (ssh username server port (str "cat - > " path) :in txt)))
+    (if append
+      (ssh username server port (str "cat - >> " path) :in txt)
+      (ssh username server port (str "cat - > " path) :in txt)))
   (poop [dest txt]
-	(ssh username server port (str "cat - > " path) :in txt))
+    (ssh username server port (str "cat - > " path) :in txt))
   Ieat
   (eat [dest]
-       (let [result (ssh username server port (shify ["cat" path]))]
-	 (if (zero? (:exit result))
-	   (:out result)
-	   (throw (Exception. ^java.lang.String (:err result))))))
+    (let [result (ssh username server port (shify ["cat" path]))]
+      (if (zero? (:exit result))
+        (:out result)
+        (throw (Exception. ^java.lang.String (:err result))))))
   Imkdir
   (mkdir [dest]
-	 (if (zero? (:exit (ssh username server port (str "mkdir -p " path))))
-	   dest
-	   (throw (Exception. (str "Could not make remote directory " path)))))
+    (if (zero? (:exit (ssh username server port (str "mkdir -p " path))))
+      dest
+      (throw (Exception. (str "Could not make remote directory " path)))))
   Iget-name
   (get-name [f]
-	    (last (.split ^String (:path f) "/")))
+    (last (.split ^String (:path f) "/")))
   Ils
   (ls [dest]
-      (map #(remote-file. (str path "/" %) username server port)
-	   (let [ls-str (:out (ssh username server port (shify ["ls" path])))]
-	     (if (empty? ls-str)
-	       nil
-	       (.split ^String ls-str "\n")))))
+    (map #(remote-file. (str path "/" %) username server port)
+         (let [ls-str (:out (ssh username server port (shify ["ls" path])))]
+           (if (empty? ls-str)
+             nil
+             (.split ^String ls-str "\n")))))
   Irm
   (rm [target] (sh-exception
 		(ssh username server port (shify ["rm" "-rf" path]))))
   Irelative-to
   (relative-to [folder path]
-	       (remote-file. (dj/str-path (:path folder) path)
-			     username server port))
+    (remote-file. (dj/str-path (:path folder) path)
+                  username server port))
   Imv
   (mv [target dest]
-      (ssh username server port (shify ["mv" path dest])))
+    (ssh username server port (shify ["mv" path dest])))
   Iparent
   (parent [f]
-	  (assoc f
-	    :path
-	    (apply str (if (= (first (:path f))
-			      \/)
-			 "/"
-			 "")
-		   (interpose "/" (filter #(not (empty? %)) (drop-last (.split ^String (:path f) "/")))))))
+    (assoc f
+      :path
+      (apply str (if (= (first (:path f))
+                        \/)
+                   "/"
+                   "")
+             (interpose "/" (filter #(not (empty? %)) (drop-last (.split ^String (:path f) "/")))))))
   Iget-path
   (get-path [f]
-	    path)
+    path)
   Iexists
   (exists? [f]
-	   (zero?
-	      (:exit
-	       (ssh username server port
-		    (str "test -e " path))))))
+    (zero?
+     (:exit
+      (ssh username server port
+           (str "test -e " path))))))
 
 (defn file-channel-copy [^java.io.File source ^java.io.File dest]
   (when-not (.exists dest)
@@ -232,30 +232,22 @@ possible without slowing down ref"
   (org.apache.commons.io.FileUtils/copyURLToFile (java.net.URL. url)
 						 f))
 
-(defmethod print-method java.io.File [o ^java.io.Writer w]
-	   (.write w "#dj.io/file \"")
-	   (.write w (str o))
-	   (.write w "\""))
-
-(defmethod print-method :default [o ^java.io.Writer w]
-	   (clojure.core/print-method o w))
-
-(defn pr-str [obj]
+(defn pr-str
+  "like clojure.core/pr-str but doesn't use rebinding to print to string"
+  [obj]
   (let [s (java.io.StringWriter.)]
-    (print-method obj s)
+    (clojure.core/print-method obj s)
     (str s)))
 
-(defonce reader-map
-  (ref {'dj.io/file (fn [arg]
-		      (java.io.File. arg))}))
+(defn assoc-data-reader!
+  "assocs clojure.core/*data-readers* to include new reader-fn for sym
 
-(defmacro defdata-reader [sym args & body]
-  `(dosync
-    (alter reader-map assoc '~sym (fn ~args ~@body))))
-
-(defn read-string [s]
-  (binding [*data-readers* @reader-map]
-    (clojure.core/read-string s)))
+reader-fn should accept the printable form"
+  [sym reader-fn]
+  (set! clojure.core/*data-readers*
+        (assoc clojure.core/*data-readers*
+          sym
+          reader-fn)))
 
 (defmacro with-temp-file [filesym options & body]
   `(let [options# (merge {:prefix "djtmp"
