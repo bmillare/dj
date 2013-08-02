@@ -41,8 +41,9 @@
 					     #":|;")]
     (reset-native-paths! (concat previous-paths new-paths))))
 
-(defn resource-as-stream [str-path]
-  (.getResourceAsStream (first (pom/classloader-hierarchy)) str-path))
+(defn resource-as-stream ^java.io.InputStream [str-path]
+  (let [cl ^java.lang.ClassLoader (first (pom/classloader-hierarchy))]
+    (.getResourceAsStream cl str-path)))
 
 (defn resource-as-str [str-path]
   (let [is (resource-as-stream str-path)]
