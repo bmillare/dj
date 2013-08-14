@@ -4,7 +4,7 @@
                  [org.eclipse.jgit/org.eclipse.jgit "2.0.0.201206130900-r"]
 		 [leiningen-core "2.1.3"]
 		 [org.apache.directory.studio/org.apache.commons.io "2.1"]
-                 [org.clojure/tools.namespace "0.2.0"]]
+                 [org.clojure/tools.namespace "0.2.4"]]
   :injections [(require '[dj.repl]
 			'[dj.dependencies]
 			'[clojure.tools.namespace.repl])]
