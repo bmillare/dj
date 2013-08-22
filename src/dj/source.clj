@@ -49,3 +49,41 @@
               (f file)))
           {}
           files))
+
+(defn filter-lines [lines ^java.util.regex.Pattern pattern]
+  (persistent!
+   (reduce (fn [ret i]
+             (let [line (lines i)]
+               (if (clojure.core/re-find pattern line)
+                 (assoc! ret
+                         (inc i)
+                         line)
+                 ret)))
+           (transient {})
+           (range (count lines)))))
+
+(defn multi-grep [files identifiers]
+  (let [lines-map (reduce (fn [ret f]
+                            (assoc ret
+                              f
+                              (-> f
+                                  dj.io/eat
+                                  (.split "\n")
+                                  vec)))
+                          {}
+                          files)]
+    (persistent!
+     (reduce (fn [ret ^String id]
+               (let [pattern (re-pattern (java.util.regex.Pattern/quote id))]
+                 (reduce (fn [ret' f]
+                           (let [lines (filter-lines (lines-map f) pattern)]
+                             (if (empty? lines)
+                               ret'
+                               (assoc! ret'
+                                       {:identifier id
+                                        :file f}
+                                       lines))))
+                         ret
+                         files)))
+             (transient {})
+             identifiers))))
