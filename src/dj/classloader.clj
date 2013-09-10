@@ -1,6 +1,7 @@
 (ns dj.classloader
   (:import [java.net URISyntaxException])
   (:require [dj]
+            [dj.repl]
 	    [cemerick.pomegranate :as pom]
 	    [dj.io :as io]
 	    [clojure.set :as set])
@@ -47,7 +48,9 @@
 
 (defn resource-as-str [str-path]
   (let [is (resource-as-stream str-path)]
-    (apply str (map char (take-while #(not= % -1) (repeatedly #(.read is)))))))
+    (if is
+      (apply str (map char (take-while #(not= % -1) (repeatedly #(.read is)))))
+      (throw (ex-info "str-path does not resolve" (dj.repl/local-context))))))
 
 (defn load-resource [str-path]
   (-> str-path
