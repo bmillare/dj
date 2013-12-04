@@ -47,6 +47,46 @@ store-fn accepts the value to be logged
                    :form '~form})
        r#)))
 
+(defmacro r1
+  "runs the form if it hasn't been stored already
+
+-stores call signature using store-fn
+
+includes local-context in the call signature
+"
+  [store-map
+   form]
+  (let [symbols (keys &env)]
+    `(let [sig# {:local-context ~(zipmap (map (fn [sym]
+                                                `(quote ~sym))
+                                              symbols)
+                                         symbols)
+                 :form '~form}
+           sm# ~store-map]
+       (if ((:dj.repl/exists? sm#) sig#)
+         nil
+         (let [r# ~form]
+           ((:dj.repl/store-fn sm#) sig#)
+           r#)))))
+
+(defn ->store-map []
+  (let [sig->date (atom {})
+        date->sig (atom {})]
+    {:dj.repl/exists? (fn exists? [sig]
+                        (@sig->date sig))
+     :dj.repl/store-fn (fn store-fn [sig]
+                         (let [d (java.util.Date.)]
+                           (swap! date->sig
+                                  assoc
+                                  d
+                                  sig)
+                           (swap! sig->date
+                                  assoc
+                                  sig
+                                  d)))
+     :dj.repl/sig->date sig->date
+     :dj.repl/date->sig date->sig}))
+
 (defmacro local-context
   "returns local bindings in a hashmap"
   []
