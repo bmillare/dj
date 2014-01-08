@@ -3,7 +3,8 @@
             [cemerick.pomegranate :as pom]
 	    [dj]
 	    [dj.io]
-	    [dj.git]))
+	    [dj.git]
+            [clojure.set :as cs]))
 
 (dj/import-fn #'pom/add-dependencies)
 
@@ -89,3 +90,54 @@
 		     (resolve-path relative-path)
 		     (dj.io/file dj/system-root (:root-path entry-obj)))]
 	     (resolve-project (dj.io/get-path f))))
+
+(defn project-source-dependencies* [dependency:queue dependency:return dependency:visited]
+  (let [d (first dependency:queue)]
+    (if d
+      (if (dependency:visited (:name d))
+        (project-source-dependencies* (rest dependency:queue)
+                                      dependency:return
+                                      dependency:visited)
+        (let [dependency:type (:dependency-type d)
+              project-file (-> ((case dependency:type
+                                          :git :name
+                                          :source :relative-path) d) 
+                                       resolve-path
+                                       (dj.io/file "project.clj"))
+              dependency:expansion (-> project-file
+                                       slurp
+                                       read-string
+                                       (eval-project-form [:default] project-file)
+                                       :dj/dependencies
+                                       (->> (map parse-dj-project-dependency)))]
+          (project-source-dependencies* (concat dependency:expansion
+                                                (rest dependency:queue))
+                                        (conj dependency:return
+                                              d)
+                                        (conj dependency:visited
+                                              (:name d)))))
+      dependency:return)))
+
+(defn project-source-dependencies
+  "return a list of dependencies that are from source, git or local"
+  [relative-path]
+  (project-source-dependencies* (list (parse-dj-project-dependency relative-path))
+                                []
+                                #{}))
+
+(defn update-source-dependencies [relative-path]
+  (->> relative-path
+       project-source-dependencies
+       (reduce (fn [ret d]
+                 (let [local-file (-> ((case (:dependency-type d)
+                                         :source :relative-path
+                                         :git :name) d)
+                                      dj.git/proj)]
+                   (if (dj.io/exists? (dj.io/file local-file ".git"))
+                     (assoc ret
+                       d
+                       (dj.git/pull local-file))
+                     (assoc ret
+                       d
+                       nil))))
+               {})))
