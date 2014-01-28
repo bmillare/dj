@@ -1,4 +1,5 @@
 (ns dj.repl
+  (:refer-clojure :exclude [time])
   (:require [clojure.repl]
             [clojure.pprint]
             [dj.io]
@@ -46,6 +47,16 @@ store-fn accepts the value to be logged
                    :result r#
                    :form '~form})
        r#)))
+
+(defmacro time
+  "conj's running time in milliseconds to atom 'a'"
+  [a expr]
+  `(let [time:start# (java.lang.System/nanoTime)
+         ret# ~expr
+         time:end# (java.lang.System/nanoTime)]
+     (swap! ~a conj (/ (- time:end# time:start#)
+                       1e6))
+     ret#))
 
 (defmacro r1
   "runs the form if it hasn't been stored already
