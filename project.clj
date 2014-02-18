@@ -12,4 +12,6 @@
              :cljs {:dependencies [[org.clojure/google-closure-library "0.0-20130212-95c19e7f0f5f"]
                                    [org.clojure/google-closure-library-third-party "0.0-20130212-95c19e7f0f5f"]
                                    [org.clojure/tools.reader "0.8.0"]
-                                   [org.clojure/data.json "0.2.2"]]}})
+                                   [org.clojure/data.json "0.2.2"]]}
+             :lighttable {:dependencies [[lein-light-nrepl "0.0.14"]]
+                          :repl-options {:nrepl-middleware [lighttable.nrepl.handler/lighttable-ops]}}})
