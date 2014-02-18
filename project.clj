@@ -2,7 +2,7 @@
   :description "A library of utilities"
   :dependencies [[org.clojure/clojure "1.5.1"]
                  [org.eclipse.jgit/org.eclipse.jgit "2.0.0.201206130900-r"]
-		 [leiningen-core "2.1.3"]
+		 [leiningen-core "2.1.3"] ;; for defproject utilities and cemerick.pomegranate
 		 [org.apache.directory.studio/org.apache.commons.io "2.1"]
                  [org.clojure/tools.namespace "0.2.4"]]
   :injections [(require '[dj.repl]
