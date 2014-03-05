@@ -1,5 +1,9 @@
 # dj 2.0alpha
 
+### Notice
+
+I have finally split up this project into smaller parts and this repo is considered deprecated. See dj.core for basic io and repl utilities. See dj.project for dynamic resolving of projects. Both dj.core and dj.project are on clojars. See dj.repo for experimental work. Dependencies have been reduced significantly. 
+
 ## Motivation
 
 Dj takes the cacaphony of java, git, clojure, clojurescript and build tools and mixes it into something harmonious; a clojure distribution. Clojure is a dynamic language: shouldn't managing our projects be too? Dj supports the goal of never having to close your REPL.
